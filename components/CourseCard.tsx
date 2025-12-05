@@ -126,12 +126,12 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
         <div className="p-3 sm:p-4 pl-4 sm:pl-5">
           <div className="flex justify-between items-start mb-2">
              <div className="flex items-center gap-2">
-               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border-none text-white ${
                  isCompleted
-                 ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
+                 ? 'bg-emerald-600'
                  : isDad 
-                   ? 'bg-blue-500/10 border-blue-500/30 text-blue-300' 
-                   : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                   ? 'bg-blue-600' 
+                   : 'bg-emerald-600'
                }`}>
                  {isCompleted ? 'COMPLETATA' : (isDad ? 'ONLINE' : 'PRESENZA')}
                </span>

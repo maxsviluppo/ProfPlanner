@@ -274,16 +274,16 @@ const CourseForm: React.FC<CourseFormProps> = ({
                       <div className="space-y-1 col-span-2 md:col-span-1">
                          <label className="text-[10px] text-slate-500 uppercase">Tipo</label>
                          <select
-                           className={`w-full border rounded text-sm px-2 py-1.5 focus:outline-none appearance-none cursor-pointer font-medium ${
+                           className={`w-full border-none rounded text-sm px-2 py-1.5 focus:outline-none appearance-none cursor-pointer font-medium text-white ${
                              session.modality === 'DAD' 
-                             ? 'bg-blue-500/20 border-blue-500/50 text-blue-300' 
-                             : 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
+                             ? 'bg-blue-600' 
+                             : 'bg-emerald-600'
                            }`}
                            value={session.modality}
                            onChange={e => updateSession(session.id, 'modality', e.target.value as Modality)}
                          >
-                           <option value="PRESENZA">In Aula</option>
-                           <option value="DAD">Online</option>
+                           <option value="PRESENZA" className="bg-slate-800 text-white">In Aula</option>
+                           <option value="DAD" className="bg-slate-800 text-white">Online</option>
                          </select>
                       </div>
                     </div>

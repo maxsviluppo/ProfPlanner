@@ -400,17 +400,25 @@ const App: React.FC = () => {
 
         {/* --- COURSE LIST --- */}
         <div ref={listRef} className="space-y-4 min-h-[300px]">
-          {filteredCourses.length > 0 ? (
-            <>
-              {selectedDate && (
-                <div className="flex items-center gap-2 mb-2 px-1">
+          {selectedDate ? (
+            <div className="flex items-center justify-between mb-2 px-1 animate-in fade-in slide-in-from-left-2">
+               <div className="flex items-center gap-2">
                    <div className="w-1 h-4 bg-purple-500 rounded-full"></div>
                    <h3 className="font-bold text-slate-200 capitalize">
                      {new Date(selectedDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}
                    </h3>
-                </div>
-              )}
-              
+               </div>
+               <button 
+                  onClick={() => { setEditingCourse(null); setIsFormOpen(true); }}
+                  className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-lg flex items-center gap-1 transition shadow-lg shadow-purple-900/40"
+               >
+                 <Plus size={14} /> Aggiungi Lezione
+               </button>
+            </div>
+          ) : null}
+
+          {filteredCourses.length > 0 ? (
+            <>
               {filteredCourses.map(course => (
                 <CourseCard 
                   key={course.id} 
@@ -426,7 +434,16 @@ const App: React.FC = () => {
              <div className="flex flex-col items-center justify-center py-12 text-slate-500 border border-dashed border-white/10 rounded-2xl bg-slate-900/30">
                 <CalendarIcon size={48} className="mb-4 opacity-20" />
                 <p className="text-lg font-medium">Nessuna lezione trovata</p>
-                <p className="text-sm opacity-60">Seleziona un altro giorno o aggiungi un corso</p>
+                <p className="text-sm opacity-60 mb-4">Seleziona un altro giorno o aggiungi un corso</p>
+                
+                {selectedDate && (
+                    <button 
+                      onClick={() => { setEditingCourse(null); setIsFormOpen(true); }}
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg flex items-center gap-2 transition"
+                    >
+                      <Plus size={16} /> Aggiungi Lezione Ora
+                    </button>
+                )}
              </div>
           )}
         </div>
