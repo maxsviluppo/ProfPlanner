@@ -5,10 +5,8 @@ import CourseForm from './components/CourseForm';
 import ImportModal from './components/ImportModal';
 import NotificationModal from './components/NotificationModal';
 import CalendarView from './components/CalendarView';
-import { Plus, Calendar as CalendarIcon, Upload, Search, Briefcase, ChevronLeft, ChevronRight, List, LayoutGrid, Clock } from 'lucide-react';
-
-const COURSES_STORAGE_KEY = 'profplanner_courses_v1';
-const INSTITUTES_STORAGE_KEY = 'profplanner_institutes_v1';
+import { db } from './services/db'; // New Import
+import { Plus, Calendar as CalendarIcon, Upload, Briefcase, ChevronLeft, ChevronRight, List, LayoutGrid } from 'lucide-react';
 
 const INSTITUTE_COLORS = [
   '#38bdf8', // Sky Blue
@@ -43,38 +41,45 @@ const App: React.FC = () => {
   // Current Date for Header
   const todayFormatted = new Date().toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
   
-  // Load initial data
+  // Load initial data (Async from DB)
   useEffect(() => {
-    // Load Courses
-    const savedCourses = localStorage.getItem(COURSES_STORAGE_KEY);
-    if (savedCourses) {
+    const initData = async () => {
       try {
-        const parsed = JSON.parse(savedCourses);
-        setCourses(parsed);
-        checkTomorrowCourses(parsed);
-      } catch (e) {
-        console.error("Failed to parse courses", e);
-      }
-    } else {
-      setSelectedDate(new Date().toISOString().split('T')[0]);
-    }
+        const [loadedCourses, loadedInstitutes] = await Promise.all([
+          db.courses.getAll(),
+          db.institutes.getAll()
+        ]);
+        
+        setCourses(loadedCourses);
+        setInstitutes(loadedInstitutes);
+        checkTomorrowCourses(loadedCourses);
 
-    // Load Institutes
-    const savedInstitutes = localStorage.getItem(INSTITUTES_STORAGE_KEY);
-    if (savedInstitutes) {
-       try {
-         setInstitutes(JSON.parse(savedInstitutes));
-       } catch (e) { console.error("Failed to parse institutes", e); }
-    }
+        // Set default view to today's month/year if we have courses today
+        const today = new Date();
+        if (loadedCourses.some(c => c.date === today.toISOString().split('T')[0])) {
+            setSelectedDate(today.toISOString().split('T')[0]);
+        }
+      } catch (error) {
+        console.error("Errore caricamento DB:", error);
+      }
+    };
+
+    initData();
   }, []);
 
-  // Save on change
+  // Save on change (Async to DB)
   useEffect(() => {
-    localStorage.setItem(COURSES_STORAGE_KEY, JSON.stringify(courses));
+    // We use a small timeout or just direct save. For this scale, direct save is fine.
+    // In a real DB app, you might want to debounce this or only save on specific actions.
+    if (courses.length > 0 || institutes.length > 0) { // Avoid overwriting with empty on first render if empty
+         db.courses.saveAll(courses);
+    }
   }, [courses]);
 
   useEffect(() => {
-    localStorage.setItem(INSTITUTES_STORAGE_KEY, JSON.stringify(institutes));
+    if (institutes.length > 0) {
+        db.institutes.saveAll(institutes);
+    }
   }, [institutes]);
 
   // Check for next day notifications
@@ -86,14 +91,6 @@ const App: React.FC = () => {
     const upcoming = currentCourses.filter(c => c.date === tomorrowStr);
     if (upcoming.length > 0) {
       setNotificationCourses(upcoming);
-    }
-    
-    // Set default view to today's month/year
-    const today = new Date();
-    if (currentCourses.some(c => c.date === today.toISOString().split('T')[0])) {
-        setSelectedDate(today.toISOString().split('T')[0]);
-        setViewMonth(today.getMonth());
-        setViewYear(today.getFullYear());
     }
   };
 
