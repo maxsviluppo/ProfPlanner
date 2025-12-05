@@ -23,10 +23,11 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
     ? { color: institute.color, textShadow: `0 0 15px ${institute.color}40` } 
     : { color: 'white' };
 
-  const minSwipeDistance = 75;
+  const swipeThreshold = 85; // Distance to trigger action
 
   // --- Swipe Handlers ---
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
+    // Prevent swipe on inputs/textareas
     if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
     
     setIsSwiping(true);
@@ -39,10 +40,11 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
     const diff = clientX - touchStart;
     
-    // Limit drag distance for better feel
-    if (diff > 150) setTranslateX(150 + (diff - 150) * 0.2);
-    else if (diff < -150) setTranslateX(-150 + (diff + 150) * 0.2);
-    else setTranslateX(diff);
+    // Elastic Damping: harder to pull the further you go
+    // Formula: y = x / (1 + |x|/k) gives a soft limit feel
+    const dampedDiff = diff / (1 + Math.abs(diff) / 300);
+
+    setTranslateX(dampedDiff);
   };
 
   const handleTouchEnd = () => {
@@ -52,15 +54,23 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
       return;
     }
 
+    const absX = Math.abs(translateX);
+
     // Determine action based on drag distance
-    if (translateX > minSwipeDistance) {
-      onEdit(course);
-      setTranslateX(0); // Snap back after triggering
-    } else if (translateX < -minSwipeDistance) {
-      onDelete(course.id);
-      setTranslateX(0); // Snap back after triggering
+    if (absX > swipeThreshold) {
+      if (translateX > 0) {
+        // Edit (Right Swipe)
+        setTranslateX(0); // Snap back visually
+        onEdit(course);
+      } else {
+        // Delete (Left Swipe)
+        setTranslateX(0); // Snap back visually
+        // Small delay to let snap-back animation start before alert blocks UI
+        setTimeout(() => onDelete(course.id), 100); 
+      }
     } else {
-      setTranslateX(0); // Reset if not far enough
+      // Not enough swipe -> Snap back
+      setTranslateX(0);
     }
     
     setTouchStart(null);
@@ -77,37 +87,51 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
   let bgClass = "bg-white/5 border-white/10";
   if (isCompleted) bgClass = "bg-emerald-900/40 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.2)]";
 
-  // Visuals for swipe
-  const opacity = Math.max(0.5, 1 - Math.abs(translateX) / 300);
-  const scale = Math.max(0.95, 1 - Math.abs(translateX) / 1000);
+  // Visual Calculations
+  const progress = Math.min(Math.abs(translateX) / swipeThreshold, 1.2); 
+  const opacity = Math.max(0.6, 1 - progress * 0.4); // Card fades slightly
+  const scale = Math.max(0.98, 1 - progress * 0.02); // Card shrinks slightly
   
-  // Dynamic Background Color based on direction
-  let swipeBgColor = 'bg-transparent';
-  if (translateX > 10) swipeBgColor = 'bg-blue-600/80';
-  else if (translateX < -10) swipeBgColor = 'bg-red-600/80';
+  // Icon Animation
+  const iconScale = Math.min(0.8 + progress * 0.4, 1.2); 
+  const iconOpacity = Math.min(progress, 1);
 
   return (
-    <div className="relative mb-3 select-none">
+    <div className="relative mb-3 select-none group">
       
-      {/* Background Actions Layer (Colored) */}
-      <div className={`absolute inset-0 flex items-center justify-between rounded-xl overflow-hidden px-4 transition-colors duration-200 ${swipeBgColor}`}>
-        <div className={`flex items-center gap-2 text-white transition-opacity duration-300 ${translateX > 30 ? 'opacity-100' : 'opacity-0'}`}>
-           <Edit2 size={24} />
-           <span className="font-bold uppercase tracking-wider text-sm">Modifica</span>
+      {/* Background Actions Layer */}
+      <div className="absolute inset-0 rounded-xl overflow-hidden">
+        {/* Edit Background (Appears on Right Swipe) */}
+        <div 
+            className="absolute inset-y-0 left-0 w-1/2 bg-blue-600 flex items-center pl-6 transition-opacity duration-200"
+            style={{ opacity: translateX > 0 ? 1 : 0 }}
+        >
+           <div style={{ transform: `scale(${iconScale})`, opacity: iconOpacity }} className="flex items-center gap-2 text-white font-bold transition-transform duration-100 will-change-transform">
+               <Edit2 size={24} />
+               <span className="text-sm tracking-wider">MODIFICA</span>
+           </div>
         </div>
-        <div className={`flex items-center gap-2 text-white transition-opacity duration-300 ${translateX < -30 ? 'opacity-100' : 'opacity-0'}`}>
-           <span className="font-bold uppercase tracking-wider text-sm">Elimina</span>
-           <Trash2 size={24} />
+
+        {/* Delete Background (Appears on Left Swipe) */}
+        <div 
+            className="absolute inset-y-0 right-0 w-1/2 bg-red-600 flex items-center justify-end pr-6 transition-opacity duration-200"
+            style={{ opacity: translateX < 0 ? 1 : 0 }}
+        >
+           <div style={{ transform: `scale(${iconScale})`, opacity: iconOpacity }} className="flex items-center gap-2 text-white font-bold transition-transform duration-100 will-change-transform">
+               <span className="text-sm tracking-wider">ELIMINA</span>
+               <Trash2 size={24} />
+           </div>
         </div>
       </div>
 
       {/* Main Card Layer */}
       <div 
-        className={`relative z-10 backdrop-blur-md border rounded-xl shadow-lg ${bgClass} overflow-hidden`}
+        className={`relative z-10 backdrop-blur-md border rounded-xl shadow-lg ${bgClass} overflow-hidden will-change-transform`}
         style={{ 
           transform: `translateX(${translateX}px) scale(${scale})`,
           opacity: opacity,
-          transition: isSwiping ? 'none' : 'transform 0.5s cubic-bezier(0.19, 1, 0.22, 1), opacity 0.2s', // Smoother release
+          // Use a spring-like cubic-bezier for the snap back, instant for dragging
+          transition: isSwiping ? 'none' : 'transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s', 
           cursor: isSwiping ? 'grabbing' : 'grab'
         }}
         onTouchStart={handleTouchStart}
