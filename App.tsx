@@ -4,8 +4,9 @@ import CourseCard from './components/CourseCard';
 import CourseForm from './components/CourseForm';
 import ImportModal from './components/ImportModal';
 import NotificationModal from './components/NotificationModal';
-import ConflictModal from './components/ConflictModal'; // Imported ConflictModal
+import ConflictModal from './components/ConflictModal'; 
 import CalendarView from './components/CalendarView';
+import StatsOverview from './components/StatsOverview'; // Imported StatsOverview
 import { db } from './services/db'; 
 import { Plus, Calendar as CalendarIcon, Upload, Briefcase, ChevronLeft, ChevronRight, List, LayoutGrid } from 'lucide-react';
 
@@ -76,9 +77,7 @@ const App: React.FC = () => {
 
   // Save on change (Async to DB)
   useEffect(() => {
-    // We use a small timeout or just direct save. For this scale, direct save is fine.
-    // In a real DB app, you might want to debounce this or only save on specific actions.
-    if (courses.length > 0 || institutes.length > 0) { // Avoid overwriting with empty on first render if empty
+    if (courses.length > 0 || institutes.length > 0) { 
          db.courses.saveAll(courses);
     }
   }, [courses]);
@@ -103,14 +102,12 @@ const App: React.FC = () => {
 
   // --- HELPER FUNCTIONS FOR CONFLICT DETECTION ---
   
-  // Convert HH:mm to minutes from midnight
   const toMinutes = (time: string): number => {
     if (!time) return 0;
     const [h, m] = time.split(':').map(Number);
     return h * 60 + m;
   };
 
-  // Check if two courses overlap
   const isOverlapping = (c1: Course, c2: Course): boolean => {
     if (c1.date !== c2.date) return false;
     
@@ -119,20 +116,16 @@ const App: React.FC = () => {
     const s2 = toMinutes(c2.startTime);
     const e2 = toMinutes(c2.endTime);
 
-    // Overlap logic: Start1 < End2 AND End1 > Start2
     return (s1 < e2 && e1 > s2);
   };
 
   // --- UNIFIED SAVE LOGIC ---
 
-  // Internal function to actually commit changes to state
   const executeSave = (newCoursesData: Course[]) => {
     if (editingCourse && newCoursesData.length === 1) {
-       // Edit Mode
        setCourses(prev => prev.map(c => c.id === newCoursesData[0].id ? newCoursesData[0] : c));
        setEditingCourse(null);
     } else {
-       // Create / Import Mode
        setCourses(prev => [...prev, ...newCoursesData]);
     }
   };
@@ -140,7 +133,6 @@ const App: React.FC = () => {
   const validateAndSaveCourses = (newCoursesData: Course[]) => {
     const conflictMessages: string[] = [];
 
-    // 1. Internal Check (Conflicts within the new batch itself)
     if (newCoursesData.length > 1) {
         for (let i = 0; i < newCoursesData.length; i++) {
             for (let j = i + 1; j < newCoursesData.length; j++) {
@@ -153,32 +145,27 @@ const App: React.FC = () => {
         }
     }
 
-    // 2. Database Check (Conflicts with existing saved courses)
     for (const newCourse of newCoursesData) {
         const overlaps = courses.filter(existing => {
-            // Ignore self if editing
             if (editingCourse && existing.id === editingCourse.id) return false; 
             return isOverlapping(newCourse, existing);
         });
 
         if (overlaps.length > 0) {
             overlaps.forEach(ov => {
-                // Format date for readability
                 const d = new Date(newCourse.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
                 conflictMessages.push(`CONFLITTO: ${d} ${newCourse.startTime}-${newCourse.endTime} vs "${ov.name}" (${ov.startTime})`);
             });
         }
     }
 
-    // 3. Prompt user if ANY conflicts exist
     if (conflictMessages.length > 0) {
         setConflictMessages(conflictMessages);
         setPendingCoursesToSave(newCoursesData);
         setIsConflictModalOpen(true);
-        return; // Halt until user confirms via modal
+        return; 
     }
 
-    // 4. Save Logic (No conflicts)
     executeSave(newCoursesData);
   };
 
@@ -194,7 +181,6 @@ const App: React.FC = () => {
   };
   
   const handleImport = (newCourses: Course[]) => {
-    // Reuse the same validation logic for imports!
     validateAndSaveCourses(newCourses);
   };
 
@@ -228,7 +214,6 @@ const App: React.FC = () => {
       setSelectedDate('');
     } else {
       setSelectedDate(date);
-      // Smooth scroll to list
       setTimeout(() => {
         listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
@@ -251,11 +236,15 @@ const App: React.FC = () => {
     return Array.from(dates).sort();
   };
 
-  const filteredCourses = courses
+  const getCoursesInViewMonth = () => {
+     return courses.filter(c => {
+         const d = new Date(c.date);
+         return d.getMonth() === viewMonth && d.getFullYear() === viewYear;
+     });
+  };
+
+  const filteredCourses = getCoursesInViewMonth()
     .filter(c => {
-      const d = new Date(c.date);
-      // Filter by Month/Year view
-      if (d.getMonth() !== viewMonth || d.getFullYear() !== viewYear) return false;
       // Filter by specific date if selected
       if (selectedDate && c.date !== selectedDate) return false;
       return true;
@@ -280,7 +269,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen font-sans text-white">
       
-      {/* FIXED Background Gradient Orbs - Will not move on scroll */}
+      {/* FIXED Background Gradient Orbs */}
       <div className="fixed inset-0 w-full h-full overflow-hidden bg-slate-900 z-[-1]">
          <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"></div>
          <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-purple-900/20 rounded-full blur-[120px] animate-pulse" style={{animationDuration: '8s'}} />
@@ -299,7 +288,6 @@ const App: React.FC = () => {
           </div>
           
           <div className="flex items-center justify-between md:justify-end gap-2 sm:gap-4 w-full md:w-auto mt-2 md:mt-0">
-             {/* Today Date Badge */}
              <div className="flex flex-col items-start md:items-end text-left md:text-right border-l md:border-l-0 md:border-r border-white/10 pl-3 md:pl-0 md:pr-4 mr-auto md:mr-0">
                 <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Oggi</span>
                 <span className="text-sm sm:text-lg font-bold text-white capitalize flex items-center gap-2 whitespace-nowrap">
@@ -338,6 +326,12 @@ const App: React.FC = () => {
              <ChevronRight size={20} />
            </button>
         </div>
+
+        {/* --- STATS OVERVIEW --- */}
+        <StatsOverview 
+            courses={getCoursesInViewMonth()} 
+            monthName={monthName}
+        />
 
         {/* View Toggle */}
         <div className="flex bg-slate-900/50 p-1 rounded-xl mb-6 w-full sm:w-fit mx-auto border border-white/5">
