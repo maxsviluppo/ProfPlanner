@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Course, Institute } from '../types';
-import { Clock, MapPin, Laptop, Edit2, Trash2, Hash, Building2, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, MapPin, Laptop, Edit2, Trash2, Hash, Building2, CheckCircle2, ChevronDown, ChevronUp, BookOpen, StickyNote } from 'lucide-react';
 
 interface CourseCardProps {
   course: Course;
@@ -12,12 +12,14 @@ interface CourseCardProps {
 
 const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDelete, onUpdate }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [translateX, setTranslateX] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
 
   const isDad = course.modality === 'DAD';
   const isCompleted = course.completed || false;
+  const hasTopics = course.topics && course.topics.trim().length > 0;
   
   const titleStyle = institute 
     ? { color: institute.color, textShadow: `0 0 15px ${institute.color}40` } 
@@ -40,10 +42,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
     const diff = clientX - touchStart;
     
-    // Elastic Damping: harder to pull the further you go
-    // Formula: y = x / (1 + |x|/k) gives a soft limit feel
     const dampedDiff = diff / (1 + Math.abs(diff) / 300);
-
     setTranslateX(dampedDiff);
   };
 
@@ -56,20 +55,15 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
 
     const absX = Math.abs(translateX);
 
-    // Determine action based on drag distance
     if (absX > swipeThreshold) {
       if (translateX > 0) {
-        // Edit (Right Swipe)
-        setTranslateX(0); // Snap back visually
+        setTranslateX(0); 
         onEdit(course);
       } else {
-        // Delete (Left Swipe)
-        setTranslateX(0); // Snap back visually
-        // Small delay to let snap-back animation start before alert blocks UI
+        setTranslateX(0); 
         setTimeout(() => onDelete(course.id), 100); 
       }
     } else {
-      // Not enough swipe -> Snap back
       setTranslateX(0);
     }
     
@@ -87,12 +81,9 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
   let bgClass = "bg-white/5 border-white/10";
   if (isCompleted) bgClass = "bg-emerald-900/40 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.2)]";
 
-  // Visual Calculations
   const progress = Math.min(Math.abs(translateX) / swipeThreshold, 1.2); 
-  const opacity = Math.max(0.6, 1 - progress * 0.4); // Card fades slightly
-  const scale = Math.max(0.98, 1 - progress * 0.02); // Card shrinks slightly
-  
-  // Icon Animation
+  const opacity = Math.max(0.6, 1 - progress * 0.4); 
+  const scale = Math.max(0.98, 1 - progress * 0.02); 
   const iconScale = Math.min(0.8 + progress * 0.4, 1.2); 
   const iconOpacity = Math.min(progress, 1);
 
@@ -101,7 +92,6 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
       
       {/* Background Actions Layer */}
       <div className="absolute inset-0 rounded-xl overflow-hidden">
-        {/* Edit Background (Appears on Right Swipe) */}
         <div 
             className="absolute inset-y-0 left-0 w-1/2 bg-blue-600 flex items-center pl-6 transition-opacity duration-200"
             style={{ opacity: translateX > 0 ? 1 : 0 }}
@@ -112,7 +102,6 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
            </div>
         </div>
 
-        {/* Delete Background (Appears on Left Swipe) */}
         <div 
             className="absolute inset-y-0 right-0 w-1/2 bg-red-600 flex items-center justify-end pr-6 transition-opacity duration-200"
             style={{ opacity: translateX < 0 ? 1 : 0 }}
@@ -130,7 +119,6 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
         style={{ 
           transform: `translateX(${translateX}px) scale(${scale})`,
           opacity: opacity,
-          // Use a spring-like cubic-bezier for the snap back, instant for dragging
           transition: isSwiping ? 'none' : 'transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s', 
           cursor: isSwiping ? 'grabbing' : 'grab'
         }}
@@ -166,12 +154,20 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
                )}
              </div>
              
-             <button 
-               onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
-               className="text-slate-500 hover:text-white transition p-1"
-             >
-               {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-             </button>
+             <div className="flex items-center gap-2">
+                {/* Topic Indicator (Visible when collapsed) */}
+                {hasTopics && !isExpanded && (
+                    <div className="text-purple-400 animate-in fade-in" title="Argomenti presenti">
+                        <BookOpen size={16} />
+                    </div>
+                )}
+                <button 
+                onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
+                className="text-slate-500 hover:text-white transition p-1"
+                >
+                {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                </button>
+             </div>
           </div>
 
           <div className="mb-2">
@@ -208,10 +204,11 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
 
         {/* Expanded Content */}
         {isExpanded && (
-          <div className="border-t border-white/5 bg-black/20 p-3 sm:p-4 animate-in slide-in-from-top-2">
+          <div className="border-t border-white/5 bg-black/20 p-3 sm:p-4 animate-in slide-in-from-top-2 space-y-4">
             
-            <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-3">
+            {/* Action Row */}
+            <div className="flex justify-between items-center bg-white/5 p-2 rounded-lg border border-white/5">
+                <div className="flex items-center gap-3 pl-1">
                     <div className="relative flex items-center justify-center">
                         <input 
                         type="checkbox" 
@@ -223,7 +220,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
                         <CheckCircle2 size={16} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" />
                     </div>
                     <label htmlFor={`check-${course.id}`} className="text-sm font-medium text-white cursor-pointer select-none">
-                        Lezione Fatta
+                        Segna come fatta
                     </label>
                 </div>
 
@@ -236,21 +233,37 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
                 </button>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs text-slate-400 uppercase font-bold tracking-wider">Argomenti Fatti</label>
-              <textarea
-                className="w-full bg-slate-900/50 border border-white/10 rounded-lg p-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-purple-500 resize-none"
-                rows={3}
-                placeholder="Inserisci gli argomenti trattati..."
-                value={course.topics || ''}
-                onChange={handleTopicsChange}
-                onMouseDown={(e) => e.stopPropagation()} 
-                onTouchStart={(e) => e.stopPropagation()} // Important to stop card drag when in textarea
-              />
+            {/* Argomenti Section - Always Visible in Expanded Mode */}
+            <div className="space-y-2">
+               <div className="flex items-center gap-2 text-purple-300 mb-1 pl-1">
+                  <StickyNote size={16} />
+                  <span className="text-xs font-bold uppercase tracking-wider">Argomenti del giorno</span>
+               </div>
+               
+               <div className="relative group">
+                  <textarea
+                    className="w-full bg-slate-900/80 border border-white/10 group-hover:border-purple-500/30 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none transition-all shadow-inner"
+                    rows={4}
+                    placeholder="Scrivi qui gli argomenti trattati in lezione..."
+                    value={course.topics || ''}
+                    onChange={handleTopicsChange}
+                    onMouseDown={(e) => e.stopPropagation()} 
+                    onTouchStart={(e) => e.stopPropagation()} 
+                  />
+                  {/* Subtle decorative corner */}
+                  <div className="absolute bottom-2 right-2 pointer-events-none opacity-50">
+                     <Edit2 size={12} className="text-slate-600" />
+                  </div>
+               </div>
             </div>
             
-            <div className="flex justify-end mt-2 pt-2 gap-4 text-xs text-slate-500">
-               <span>Doppio click per chiudere</span>
+            <div className="flex justify-center pt-1">
+               <button 
+                 onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
+                 className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1 transition"
+               >
+                 <ChevronUp size={12} /> Chiudi dettagli
+               </button>
             </div>
           </div>
         )}
