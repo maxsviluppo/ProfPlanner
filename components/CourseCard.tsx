@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Course, Institute } from '../types';
-import { Clock, MapPin, Laptop, Edit2, Trash2, Hash, Building2, CheckCircle2, ChevronDown, ChevronUp, BookOpen, StickyNote } from 'lucide-react';
+import { Clock, MapPin, Laptop, Edit2, Trash2, Hash, Building2, CheckCircle2, ChevronDown, ChevronUp, BookOpen, StickyNote, ExternalLink, Save, X } from 'lucide-react';
 
 interface CourseCardProps {
   course: Course;
@@ -12,6 +12,7 @@ interface CourseCardProps {
 
 const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDelete, onUpdate }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isEditingTopics, setIsEditingTopics] = useState(false);
   
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [translateX, setTranslateX] = useState(0);
@@ -25,7 +26,31 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
     ? { color: institute.color, textShadow: `0 0 15px ${institute.color}40` } 
     : { color: 'white' };
 
-  const swipeThreshold = 85; // Distance to trigger action
+  const swipeThreshold = 85;
+
+  // --- Linkify Helper ---
+  const renderTextWithLinks = (text: string) => {
+    if (!text) return null;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+    
+    return parts.map((part, i) => 
+      urlRegex.test(part) ? (
+        <a 
+            key={i} 
+            href={part} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-blue-400 hover:text-blue-300 underline break-all inline-flex items-center gap-0.5 align-middle"
+            onClick={(e) => e.stopPropagation()}
+        >
+          {part} <ExternalLink size={10} className="inline" />
+        </a>
+      ) : (
+        <span key={i}>{part}</span>
+      )
+    );
+  };
 
   // --- Swipe Handlers ---
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
@@ -220,7 +245,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
                         <CheckCircle2 size={16} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" />
                     </div>
                     <label htmlFor={`check-${course.id}`} className="text-sm font-medium text-white cursor-pointer select-none">
-                        Segna come fatta
+                        Lezione Fatta
                     </label>
                 </div>
 
@@ -233,36 +258,61 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
                 </button>
             </div>
 
-            {/* Argomenti Section - Always Visible in Expanded Mode */}
+            {/* Argomenti Section - View/Edit Mode */}
             <div className="space-y-2">
-               <div className="flex items-center gap-2 text-purple-300 mb-1 pl-1">
-                  <StickyNote size={16} />
-                  <span className="text-xs font-bold uppercase tracking-wider">Argomenti del giorno</span>
+               <div className="flex items-center justify-between mb-1 pl-1">
+                  <div className="flex items-center gap-2 text-purple-300">
+                      <StickyNote size={16} />
+                      <span className="text-xs font-bold uppercase tracking-wider">Argomenti del giorno</span>
+                  </div>
+                  {hasTopics && !isEditingTopics && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setIsEditingTopics(true); }}
+                        className="text-xs text-slate-400 hover:text-white flex items-center gap-1 bg-white/5 px-2 py-1 rounded-lg border border-white/5 transition"
+                      >
+                         <Edit2 size={12} /> Modifica
+                      </button>
+                  )}
                </div>
                
-               <div className="relative group">
-                  <textarea
-                    className="w-full bg-slate-900/80 border border-white/10 group-hover:border-purple-500/30 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none transition-all shadow-inner"
-                    rows={4}
-                    placeholder="Scrivi qui gli argomenti trattati in lezione..."
-                    value={course.topics || ''}
-                    onChange={handleTopicsChange}
-                    onMouseDown={(e) => e.stopPropagation()} 
-                    onTouchStart={(e) => e.stopPropagation()} 
-                  />
-                  {/* Subtle decorative corner */}
-                  <div className="absolute bottom-2 right-2 pointer-events-none opacity-50">
-                     <Edit2 size={12} className="text-slate-600" />
-                  </div>
-               </div>
+               {isEditingTopics || !hasTopics ? (
+                 <div className="relative group animate-in fade-in">
+                    <textarea
+                      autoFocus={hasTopics}
+                      className="w-full bg-slate-900/80 border border-white/10 group-hover:border-purple-500/30 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none transition-all shadow-inner custom-scrollbar"
+                      rows={4}
+                      placeholder="Scrivi qui gli argomenti... (Inserisci URL per creare link)"
+                      value={course.topics || ''}
+                      onChange={handleTopicsChange}
+                      onMouseDown={(e) => e.stopPropagation()} 
+                      onTouchStart={(e) => e.stopPropagation()} 
+                    />
+                    {hasTopics && (
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); setIsEditingTopics(false); }}
+                            className="absolute bottom-3 right-3 px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-lg shadow-lg flex items-center gap-1 transition"
+                        >
+                            <Save size={12} /> Fine
+                        </button>
+                    )}
+                 </div>
+               ) : (
+                 <div 
+                   onClick={(e) => { e.stopPropagation(); setIsEditingTopics(true); }}
+                   className="w-full bg-slate-900/40 border border-white/5 rounded-xl p-3 text-sm text-slate-300 whitespace-pre-wrap break-words min-h-[80px] cursor-pointer hover:bg-slate-900/60 hover:border-white/10 transition-all shadow-sm"
+                   title="Clicca per modificare"
+                 >
+                    {renderTextWithLinks(course.topics || '')}
+                 </div>
+               )}
             </div>
             
             <div className="flex justify-center pt-1">
                <button 
                  onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
-                 className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1 transition"
+                 className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1 transition p-2"
                >
-                 <ChevronUp size={12} /> Chiudi dettagli
+                 <ChevronUp size={14} /> Chiudi dettagli
                </button>
             </div>
           </div>
