@@ -4,8 +4,9 @@ import CourseCard from './components/CourseCard';
 import CourseForm from './components/CourseForm';
 import ImportModal from './components/ImportModal';
 import NotificationModal from './components/NotificationModal';
+import ConflictModal from './components/ConflictModal'; // Imported ConflictModal
 import CalendarView from './components/CalendarView';
-import { db } from './services/db'; // New Import
+import { db } from './services/db'; 
 import { Plus, Calendar as CalendarIcon, Upload, Briefcase, ChevronLeft, ChevronRight, List, LayoutGrid } from 'lucide-react';
 
 const INSTITUTE_COLORS = [
@@ -25,6 +26,12 @@ const App: React.FC = () => {
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  
+  // Conflict Modal State
+  const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
+  const [conflictMessages, setConflictMessages] = useState<string[]>([]);
+  const [pendingCoursesToSave, setPendingCoursesToSave] = useState<Course[]>([]);
+
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [notificationCourses, setNotificationCourses] = useState<Course[]>([]);
   
@@ -117,6 +124,19 @@ const App: React.FC = () => {
   };
 
   // --- UNIFIED SAVE LOGIC ---
+
+  // Internal function to actually commit changes to state
+  const executeSave = (newCoursesData: Course[]) => {
+    if (editingCourse && newCoursesData.length === 1) {
+       // Edit Mode
+       setCourses(prev => prev.map(c => c.id === newCoursesData[0].id ? newCoursesData[0] : c));
+       setEditingCourse(null);
+    } else {
+       // Create / Import Mode
+       setCourses(prev => [...prev, ...newCoursesData]);
+    }
+  };
+
   const validateAndSaveCourses = (newCoursesData: Course[]) => {
     const conflictMessages: string[] = [];
 
@@ -152,25 +172,21 @@ const App: React.FC = () => {
 
     // 3. Prompt user if ANY conflicts exist
     if (conflictMessages.length > 0) {
-        const confirmMsg = `⚠️ ATTENZIONE: Rilevati ${conflictMessages.length} conflitti di orario!\n\n` +
-                           conflictMessages.slice(0, 6).join('\n') + 
-                           (conflictMessages.length > 6 ? `\n...e altri ${conflictMessages.length - 6}.` : '') +
-                           `\n\nVuoi procedere comunque salvando le lezioni sovrapposte?`;
-        
-        if (!window.confirm(confirmMsg)) {
-            return; // ABORT SAVE
-        }
+        setConflictMessages(conflictMessages);
+        setPendingCoursesToSave(newCoursesData);
+        setIsConflictModalOpen(true);
+        return; // Halt until user confirms via modal
     }
 
-    // 4. Save Logic
-    if (editingCourse && newCoursesData.length === 1) {
-       // Edit Mode
-       setCourses(courses.map(c => c.id === newCoursesData[0].id ? newCoursesData[0] : c));
-       setEditingCourse(null);
-    } else {
-       // Create / Import Mode
-       setCourses(prev => [...prev, ...newCoursesData]);
-    }
+    // 4. Save Logic (No conflicts)
+    executeSave(newCoursesData);
+  };
+
+  const handleConfirmConflict = () => {
+    executeSave(pendingCoursesToSave);
+    setIsConflictModalOpen(false);
+    setPendingCoursesToSave([]);
+    setConflictMessages([]);
   };
 
   const handleAddCourses = (newCoursesData: Course[]) => {
@@ -465,6 +481,17 @@ const App: React.FC = () => {
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
         onImport={handleImport}
+      />
+
+      <ConflictModal 
+        isOpen={isConflictModalOpen}
+        onClose={() => {
+            setIsConflictModalOpen(false);
+            setPendingCoursesToSave([]);
+            setConflictMessages([]);
+        }}
+        onConfirm={handleConfirmConflict}
+        conflicts={conflictMessages}
       />
 
       {notificationCourses.length > 0 && (
