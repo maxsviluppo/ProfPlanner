@@ -14,7 +14,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditingTopics, setIsEditingTopics] = useState(false);
   
-  // Animation state for the "bounce" effect
+  // Animation state for the "bounce" effect and completion
   const [isAnimating, setIsAnimating] = useState(false);
   
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -26,9 +26,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
   // FORCE BOOLEAN to avoid TS2322
   const hasTopics = !!(course.topics && course.topics.trim().length > 0);
   
-  const titleStyle = institute 
-    ? { color: institute.color, textShadow: `0 0 15px ${institute.color}40` } 
-    : { color: 'white' };
+  const instituteColor = institute?.color || '#94a3b8'; // Default slate-400
 
   const swipeThreshold = 85;
 
@@ -58,6 +56,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
 
   // --- Swipe Handlers ---
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
+    // Prevent swipe on inputs
     if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
     
     setIsSwiping(true);
@@ -70,7 +69,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
     const diff = clientX - touchStart;
     
-    const dampedDiff = diff / (1 + Math.abs(diff) / 300);
+    // Add resistance (damping) as you swipe further
+    const dampedDiff = diff / (1 + Math.abs(diff) / 400);
     setTranslateX(dampedDiff);
   };
 
@@ -85,13 +85,16 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
 
     if (absX > swipeThreshold) {
       if (translateX > 0) {
+        // Edit action
         setTranslateX(0); 
         onEdit(course);
       } else {
-        setTranslateX(0); 
-        setTimeout(() => onDelete(course.id), 100); 
+        // Delete action
+        setTranslateX(-500); // Swipe away effect
+        setTimeout(() => onDelete(course.id), 200); 
       }
     } else {
+      // Snap back
       setTranslateX(0);
     }
     
@@ -117,48 +120,48 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
     onUpdate({ ...course, topics: e.target.value });
   };
 
-  let bgClass = "bg-white/5 border-white/10";
-  if (isCompleted) bgClass = "bg-emerald-900/40 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.2)]";
+  let bgClass = "bg-slate-900/60 border-white/10";
+  if (isCompleted) bgClass = "bg-emerald-950/40 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]";
 
-  const progress = Math.min(Math.abs(translateX) / swipeThreshold, 1.2); 
-  const opacity = Math.max(0.6, 1 - progress * 0.4); 
+  const progress = Math.min(Math.abs(translateX) / swipeThreshold, 1); 
+  // const opacity = Math.max(0.6, 1 - progress * 0.4); 
   const scale = Math.max(0.98, 1 - progress * 0.02); 
   const iconScale = Math.min(0.8 + progress * 0.4, 1.2); 
   const iconOpacity = Math.min(progress, 1);
 
   return (
-    <div className={`relative mb-3 select-none group transition-transform duration-300 ${isAnimating ? 'scale-105' : 'scale-100'}`}>
+    <div className={`relative mb-4 select-none group transition-transform duration-300 ${isAnimating ? 'scale-[1.02]' : 'scale-100'}`}>
       
       {/* Background Actions Layer */}
-      <div className="absolute inset-0 rounded-xl overflow-hidden">
+      <div className="absolute inset-0 rounded-2xl overflow-hidden">
         <div 
-            className="absolute inset-y-0 left-0 w-1/2 bg-blue-600 flex items-center pl-6 transition-opacity duration-200"
+            className="absolute inset-y-0 left-0 w-full bg-blue-600/90 flex items-center pl-8 transition-opacity duration-200"
             style={{ opacity: translateX > 0 ? 1 : 0 }}
         >
-           <div style={{ transform: `scale(${iconScale})`, opacity: iconOpacity }} className="flex items-center gap-2 text-white font-bold transition-transform duration-100 will-change-transform">
-               <Edit2 size={24} />
-               <span className="text-sm tracking-wider">MODIFICA</span>
+           <div style={{ transform: `scale(${iconScale})`, opacity: iconOpacity }} className="flex items-center gap-3 text-white font-bold transition-transform duration-100 will-change-transform">
+               <Edit2 size={28} />
+               <span className="text-lg tracking-wider">MODIFICA</span>
            </div>
         </div>
 
         <div 
-            className="absolute inset-y-0 right-0 w-1/2 bg-red-600 flex items-center justify-end pr-6 transition-opacity duration-200"
+            className="absolute inset-y-0 right-0 w-full bg-red-600/90 flex items-center justify-end pr-8 transition-opacity duration-200"
             style={{ opacity: translateX < 0 ? 1 : 0 }}
         >
-           <div style={{ transform: `scale(${iconScale})`, opacity: iconOpacity }} className="flex items-center gap-2 text-white font-bold transition-transform duration-100 will-change-transform">
-               <span className="text-sm tracking-wider">ELIMINA</span>
-               <Trash2 size={24} />
+           <div style={{ transform: `scale(${iconScale})`, opacity: iconOpacity }} className="flex items-center gap-3 text-white font-bold transition-transform duration-100 will-change-transform">
+               <span className="text-lg tracking-wider">ELIMINA</span>
+               <Trash2 size={28} />
            </div>
         </div>
       </div>
 
       {/* Main Card Layer */}
       <div 
-        className={`relative z-10 backdrop-blur-md border rounded-xl shadow-lg ${bgClass} overflow-hidden will-change-transform ${isAnimating && isCompleted ? 'ring-2 ring-emerald-400 bg-emerald-900/60' : ''}`}
+        className={`relative z-10 backdrop-blur-md border rounded-2xl shadow-lg ${bgClass} overflow-hidden touch-pan-y`}
         style={{ 
           transform: `translateX(${translateX}px) scale(${scale})`,
-          opacity: opacity,
-          transition: isSwiping ? 'none' : 'transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s, background-color 0.3s, border-color 0.3s', 
+          // Snappier elastic return logic: when swiping use 'none', when releasing use a spring-like bezier
+          transition: isSwiping ? 'none' : 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.3s, border-color 0.3s', 
           cursor: isSwiping ? 'grabbing' : 'grab'
         }}
         onTouchStart={handleTouchStart}
@@ -171,83 +174,84 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
         onDoubleClick={() => setIsExpanded(!isExpanded)}
       >
         
-        {/* Visual Indicator Strip */}
-        <div className={`absolute left-0 top-0 bottom-0 w-1 ${isCompleted ? 'bg-emerald-400' : (isDad ? 'bg-blue-500' : 'bg-emerald-500')}`} />
+        {/* Left Color Strip */}
+        <div 
+          className="absolute left-0 top-0 bottom-0 w-1.5 z-20" 
+          style={{ backgroundColor: isCompleted ? '#10b981' : instituteColor }} 
+        />
 
-        <div className="p-3 sm:p-4 pl-4 sm:pl-5">
-          <div className="flex justify-between items-start mb-2">
-             <div className="flex items-center gap-2">
-               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border-none text-white ${
-                 isCompleted
-                 ? 'bg-emerald-600'
-                 : isDad 
-                   ? 'bg-blue-600' 
-                   : 'bg-emerald-600'
-               }`}>
-                 {isCompleted ? 'COMPLETATA' : (isDad ? 'ONLINE' : 'PRESENZA')}
-               </span>
-               {course.code && (
-                 <span className="text-[10px] font-mono text-slate-400 flex items-center gap-0.5">
-                   <Hash size={10} /> {course.code}
-                 </span>
+        <div className="p-4 pl-5">
+          {/* Header Row: Time & Badges */}
+          <div className="flex justify-between items-center mb-3">
+             <div className="flex items-center gap-3">
+               <div className={`flex items-center gap-1.5 text-sm font-bold font-mono ${isCompleted ? 'text-emerald-400' : 'text-slate-200'}`}>
+                  <Clock size={16} className={isCompleted ? "text-emerald-500" : "text-purple-400"} />
+                  {course.startTime} - {course.endTime}
+               </div>
+               
+               {isDad ? (
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[10px] font-bold text-blue-300 uppercase tracking-wide">
+                   <Laptop size={10} /> Online
+                </div>
+               ) : (
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-300 uppercase tracking-wide">
+                   <MapPin size={10} /> Aula
+                </div>
                )}
              </div>
-             
+
              <div className="flex items-center gap-2">
-                {/* Topic Indicator */}
-                {hasTopics && !isExpanded && (
-                    <div className="text-purple-400 animate-in fade-in" title="Argomenti presenti">
-                        <BookOpen size={16} />
-                    </div>
-                )}
+                {isCompleted && <CheckCircle2 size={18} className="text-emerald-500" />}
                 <button 
                 onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
-                className="text-slate-500 hover:text-white transition p-1"
+                className="text-slate-500 hover:text-white transition p-1 rounded-full hover:bg-white/5"
                 >
-                {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                 </button>
              </div>
           </div>
 
-          <div className="mb-2">
-            <h3 className={`text-base sm:text-lg font-bold leading-tight transition-all duration-300 ${isCompleted ? 'opacity-70 decoration-slate-400 decoration-2' : ''}`} style={titleStyle}>
+          {/* Main Course Info */}
+          <div className="mb-3">
+            <h3 className={`text-xl font-extrabold leading-tight tracking-tight mb-1 ${isCompleted ? 'text-slate-400 line-through decoration-emerald-500/50' : 'text-white'}`}>
               {course.name}
             </h3>
             
-            {institute && (
-              <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-1">
-                <Building2 size={12} className="opacity-70" style={{ color: institute.color }}/>
-                <span className="uppercase tracking-wide opacity-80">{institute.name}</span>
-              </div>
-            )}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                {institute && (
+                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
+                    <Building2 size={12} style={{ color: instituteColor }}/>
+                    <span className="uppercase tracking-wide opacity-90">{institute.name}</span>
+                </div>
+                )}
+                
+                {course.code && (
+                    <span className="text-[10px] font-mono text-slate-500 bg-slate-800/50 px-1.5 py-0.5 rounded border border-white/5">
+                    {course.code}
+                    </span>
+                )}
+            </div>
           </div>
 
-          <div className="flex items-center gap-4 text-xs sm:text-sm text-slate-300">
-            <div className="flex items-center gap-1.5">
-              <Clock size={14} className={isCompleted ? "text-emerald-400" : "text-purple-400"} />
-              <span className="font-mono">{course.startTime} - {course.endTime}</span>
-            </div>
-            {isDad ? (
-              <div className="flex items-center gap-1.5 text-blue-300/80">
-                 <Laptop size={14} />
-                 <span>Remoto</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 text-emerald-300/80">
-                 <MapPin size={14} />
-                 <span>Aula</span>
-              </div>
-            )}
-          </div>
+          {/* Topics Preview (Visible in collapsed state) */}
+          {hasTopics && !isExpanded && (
+             <div className="mt-3 relative pl-3 border-l-2 border-slate-700/50">
+                 <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                    <span className="text-purple-400 font-bold mr-1">Note:</span>
+                    {course.topics}
+                 </p>
+             </div>
+          )}
+
         </div>
 
         {/* Expanded Content */}
         {isExpanded && (
-          <div className="border-t border-white/5 bg-black/20 p-3 sm:p-4 animate-in slide-in-from-top-2 space-y-4">
+          <div className="border-t border-white/5 bg-black/20 p-4 animate-in slide-in-from-top-2 space-y-4">
             
             {/* Action Row */}
-            <div className="flex justify-between items-center bg-white/5 p-2 rounded-lg border border-white/5">
-                <div className="flex items-center gap-3 pl-1">
+            <div className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5">
+                <div className="flex items-center gap-3">
                     <div className="relative flex items-center justify-center">
                         <input 
                         type="checkbox" 
@@ -258,8 +262,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
                         />
                         <CheckCircle2 size={16} className={`absolute text-white pointer-events-none transition-all duration-300 ${isCompleted ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} />
                     </div>
-                    <label htmlFor={`check-${course.id}`} className={`text-sm font-medium cursor-pointer select-none transition-colors ${isCompleted ? 'text-emerald-400' : 'text-white'}`}>
-                        {isCompleted ? 'Lezione Completata!' : 'Segna come fatta'}
+                    <label htmlFor={`check-${course.id}`} className={`text-sm font-bold cursor-pointer select-none transition-colors ${isCompleted ? 'text-emerald-400' : 'text-slate-200'}`}>
+                        {isCompleted ? 'Lezione Completata' : 'Segna come fatta'}
                     </label>
                 </div>
 
@@ -274,7 +278,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
 
             {/* Argomenti Section - View/Edit Mode */}
             <div className="space-y-2">
-               <div className="flex items-center justify-between mb-1 pl-1">
+               <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2 text-purple-300">
                       <StickyNote size={16} />
                       <span className="text-xs font-bold uppercase tracking-wider">Argomenti del giorno</span>
@@ -313,7 +317,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
                ) : (
                  <div 
                    onClick={(e) => { e.stopPropagation(); setIsEditingTopics(true); }}
-                   className="w-full bg-slate-900/40 border border-white/5 rounded-xl p-3 text-sm text-slate-300 whitespace-pre-wrap break-words min-h-[80px] cursor-pointer hover:bg-slate-900/60 hover:border-white/10 transition-all shadow-sm"
+                   className="w-full bg-slate-900/40 border border-white/5 rounded-xl p-4 text-sm text-slate-300 whitespace-pre-wrap break-words min-h-[80px] cursor-pointer hover:bg-slate-900/60 hover:border-white/10 transition-all shadow-sm"
                    title="Clicca per modificare"
                  >
                     {renderTextWithLinks(course.topics || '')}
@@ -321,10 +325,10 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
                )}
             </div>
             
-            <div className="flex justify-center pt-1">
+            <div className="flex justify-center pt-2">
                <button 
                  onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
-                 className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1 transition p-2"
+                 className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1 transition px-4 py-2 hover:bg-white/5 rounded-lg"
                >
                  <ChevronUp size={14} /> Chiudi dettagli
                </button>
