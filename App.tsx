@@ -9,7 +9,7 @@ import SettingsModal from './components/SettingsModal';
 import CalendarView from './components/CalendarView';
 import StatsOverview from './components/StatsOverview'; 
 import { db } from './services/db'; 
-import { Plus, Calendar as CalendarIcon, Upload, Briefcase, ChevronLeft, ChevronRight, List, LayoutGrid, Settings, Filter } from 'lucide-react';
+import { Plus, Upload, Briefcase, ChevronLeft, ChevronRight, List, LayoutGrid, Settings } from 'lucide-react';
 
 const DEFAULT_COLOR = '#38bdf8';
 
@@ -31,7 +31,6 @@ const App: React.FC = () => {
   
   // Notification Settings
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const [notifiedCourseIds, setNotifiedCourseIds] = useState<Set<string>>(new Set());
 
   // View State
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
@@ -112,10 +111,14 @@ const App: React.FC = () => {
 
   const handleToggleNotifications = async () => {
      if (!notificationsEnabled) {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-            setNotificationsEnabled(true);
-            localStorage.setItem('profplanner_notifications', 'true');
+        if ('Notification' in window) {
+           const permission = await Notification.requestPermission();
+           if (permission === 'granted') {
+               setNotificationsEnabled(true);
+               localStorage.setItem('profplanner_notifications', 'true');
+           }
+        } else {
+           alert("Il tuo browser non supporta le notifiche.");
         }
      } else {
         setNotificationsEnabled(false);
