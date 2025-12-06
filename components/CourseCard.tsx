@@ -33,8 +33,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
   const isMorning = startHour < 14;
   const timeOfDayLabel = isMorning ? 'MATTINA' : 'POMERIGGIO';
 
-  // INCREASED THRESHOLD: Was 85, now 175 to make it less sensitive
-  const swipeThreshold = 175;
+  // LOWERED THRESHOLD: Was 175, now 80 for easier triggering
+  const swipeThreshold = 80;
 
   // --- Linkify Helper ---
   const renderTextWithLinks = (text: string) => {
@@ -95,12 +95,14 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
         setTranslateX(0); 
         onEdit(course);
       } else {
-        // Delete action
-        setTranslateX(-500); // Swipe away effect
-        setTimeout(() => onDelete(course.id), 200); 
+        // Delete action logic fixed:
+        // 1. Snap back to 0 immediately so if user cancels 'window.confirm', the card is visible.
+        setTranslateX(0); 
+        // 2. Small delay to let React update the position before the alert blocks the thread
+        setTimeout(() => onDelete(course.id), 50); 
       }
     } else {
-      // Snap back
+      // Snap back if threshold not met
       setTranslateX(0);
     }
     

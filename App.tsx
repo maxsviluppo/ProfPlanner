@@ -388,10 +388,26 @@ const App: React.FC = () => {
                  <p className="text-xs text-slate-500 font-medium capitalize">{todayFormatted}</p>
              </div>
              
+             {/* MOVED: Action Buttons in Header */}
              <div className="flex gap-2">
+                 <button
+                   onClick={() => setIsImportOpen(true)}
+                   className="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-purple-400 hover:text-white transition border border-white/5"
+                   title="Importa con AI"
+                 >
+                     <Upload size={20} />
+                 </button>
+                 <button
+                   onClick={() => { setEditingCourse(null); setIsFormOpen(true); }}
+                   className="p-2 bg-purple-600 hover:bg-purple-500 rounded-xl text-white transition border border-white/5 shadow-lg shadow-purple-900/20"
+                   title="Nuova Lezione"
+                 >
+                     <Plus size={20} />
+                 </button>
                  <button 
                    onClick={() => setIsSettingsOpen(true)}
                    className="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-400 hover:text-white transition border border-white/5"
+                   title="Impostazioni"
                  >
                      <Settings size={20} />
                  </button>
@@ -485,24 +501,6 @@ const App: React.FC = () => {
              {renderContent()}
 
         </main>
-
-        {/* Floating Action Buttons */}
-        <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-40">
-             <button
-               onClick={() => setIsImportOpen(true)}
-               className="p-4 bg-slate-800 text-purple-400 rounded-2xl shadow-xl shadow-black/40 border border-white/10 hover:scale-105 transition hover:text-purple-300 hover:bg-slate-700"
-               title="Importa con AI"
-             >
-                 <Upload size={24} />
-             </button>
-             <button
-               onClick={() => { setEditingCourse(null); setIsFormOpen(true); }}
-               className="p-4 bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-2xl shadow-xl shadow-purple-900/30 hover:scale-105 transition border border-white/10"
-               title="Nuova Lezione"
-             >
-                 <Plus size={28} />
-             </button>
-        </div>
 
         {/* MODALS */}
         <CourseForm
