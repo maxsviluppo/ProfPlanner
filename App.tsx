@@ -5,13 +5,12 @@ import CourseForm from './components/CourseForm';
 import ImportModal from './components/ImportModal';
 import NotificationModal from './components/NotificationModal';
 import ConflictModal from './components/ConflictModal'; 
-import SettingsModal from './components/SettingsModal'; // New Import
+import SettingsModal from './components/SettingsModal'; 
 import CalendarView from './components/CalendarView';
 import StatsOverview from './components/StatsOverview'; 
 import { db } from './services/db'; 
 import { Plus, Calendar as CalendarIcon, Upload, Briefcase, ChevronLeft, ChevronRight, List, LayoutGrid, Settings } from 'lucide-react';
 
-// Removed hardcoded colors from here, now managed in SettingsModal / passed via handler
 const DEFAULT_COLOR = '#38bdf8';
 
 const App: React.FC = () => {
@@ -20,7 +19,7 @@ const App: React.FC = () => {
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false); // Settings State
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false); 
   
   // Conflict Modal State
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
@@ -38,7 +37,7 @@ const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
   // Filtering state
-  const [selectedDate, setSelectedDate] = useState<string>(''); 
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]); 
   const [viewMonth, setViewMonth] = useState<number>(new Date().getMonth());
   const [viewYear, setViewYear] = useState<number>(new Date().getFullYear());
 
@@ -47,6 +46,20 @@ const App: React.FC = () => {
   // Current Date for Header
   const todayFormatted = new Date().toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
   
+  const checkTomorrowCourses = (currentCourses: Course[]) => {
+     const tomorrow = new Date();
+     tomorrow.setDate(tomorrow.getDate() + 1);
+     const tomorrowStr = tomorrow.toISOString().split('T')[0];
+     
+     const upcoming = currentCourses.filter(c => c.date === tomorrowStr);
+     if (upcoming.length > 0) {
+         setNotificationCourses(upcoming);
+         if (notificationsEnabled && 'Notification' in window && Notification.permission === 'granted') {
+             // Logic for browser notification can be added here
+         }
+     }
+  };
+
   // Load initial data (Async from DB)
   useEffect(() => {
     const initData = async () => {
@@ -63,7 +76,8 @@ const App: React.FC = () => {
         // Load notification preference
         const notifPref = localStorage.getItem('profplanner_notifications');
         if (notifPref === 'true') {
-          if (Notification.permission === 'granted') {
+          // Check if Notification API exists and permission is granted
+          if ('Notification' in window && Notification.permission === 'granted') {
             setNotificationsEnabled(true);
           }
         }
@@ -93,488 +107,311 @@ const App: React.FC = () => {
     db.institutes.saveAll(institutes);
   }, [institutes]);
 
-  // --- NOTIFICATION LOGIC (15 MIN REMINDER) ---
-  const toggleNotifications = async () => {
-    if (!notificationsEnabled) {
-      const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
-        setNotificationsEnabled(true);
-        localStorage.setItem('profplanner_notifications', 'true');
-        new Notification("ProfPlanner AI", { body: "Notifiche attivate! Ti avviserò 15 minuti prima delle lezioni." });
-      } else {
-        alert("Devi concedere i permessi per ricevere le notifiche.");
-      }
-    } else {
-      setNotificationsEnabled(false);
-      localStorage.setItem('profplanner_notifications', 'false');
-    }
-  };
+  // --- HANDLERS ---
 
-  useEffect(() => {
-    if (!notificationsEnabled) return;
-
-    const intervalId = setInterval(() => {
-      const now = new Date();
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-      const todayStr = now.toISOString().split('T')[0];
-
-      courses.forEach(course => {
-        // Check if course is today and not completed
-        if (course.date === todayStr && !course.completed) {
-           const [h, m] = course.startTime.split(':').map(Number);
-           const courseStartMinutes = h * 60 + m;
-           const diff = courseStartMinutes - currentMinutes;
-
-           // Trigger if exactly 15 minutes before
-           if (diff === 15 && !notifiedCourseIds.has(course.id)) {
-             new Notification(`Lezione tra 15 min: ${course.name}`, {
-               body: `Orario: ${course.startTime} - ${course.modality === 'DAD' ? 'Online' : 'In Sede'}`,
-               icon: '/vite.svg' 
-             });
-             
-             setNotifiedCourseIds(prev => new Set(prev).add(course.id));
-           }
+  const handleToggleNotifications = async () => {
+     if (!notificationsEnabled) {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            setNotificationsEnabled(true);
+            localStorage.setItem('profplanner_notifications', 'true');
         }
-      });
-    }, 60000); 
-
-    return () => clearInterval(intervalId);
-  }, [notificationsEnabled, courses, notifiedCourseIds]);
-
-
-  // Check for next day notifications (Modal)
-  const checkTomorrowCourses = (currentCourses: Course[]) => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
-    
-    const upcoming = currentCourses.filter(c => c.date === tomorrowStr);
-    if (upcoming.length > 0) {
-      setNotificationCourses(upcoming);
-    }
+     } else {
+        setNotificationsEnabled(false);
+        localStorage.setItem('profplanner_notifications', 'false');
+     }
   };
 
-  // --- HELPER FUNCTIONS ---
-  
-  const toMinutes = (time: string): number => {
-    if (!time) return 0;
-    const [h, m] = time.split(':').map(Number);
-    return h * 60 + m;
-  };
-
-  const isOverlapping = (c1: Course, c2: Course): boolean => {
-    if (c1.date !== c2.date) return false;
-    
-    const s1 = toMinutes(c1.startTime);
-    const e1 = toMinutes(c1.endTime);
-    const s2 = toMinutes(c2.startTime);
-    const e2 = toMinutes(c2.endTime);
-
-    return (s1 < e2 && e1 > s2);
-  };
-
-  // --- SAVE & CONFLICT LOGIC ---
-
-  const executeSave = (newCoursesData: Course[]) => {
-    if (editingCourse && newCoursesData.length === 1) {
-       setCourses(prev => prev.map(c => c.id === newCoursesData[0].id ? newCoursesData[0] : c));
-       setEditingCourse(null);
-    } else {
-       setCourses(prev => [...prev, ...newCoursesData]);
-    }
-  };
-
-  const validateAndSaveCourses = (newCoursesData: Course[]) => {
-    const conflictMessages: string[] = [];
-
-    if (newCoursesData.length > 1) {
-        for (let i = 0; i < newCoursesData.length; i++) {
-            for (let j = i + 1; j < newCoursesData.length; j++) {
-                if (isOverlapping(newCoursesData[i], newCoursesData[j])) {
-                    const c1 = newCoursesData[i];
-                    const c2 = newCoursesData[j];
-                    conflictMessages.push(`INTERNO: ${c1.date} - ${c1.startTime} si sovrappone a ${c2.startTime}`);
-                }
-            }
-        }
-    }
-
-    for (const newCourse of newCoursesData) {
-        const overlaps = courses.filter(existing => {
-            if (editingCourse && existing.id === editingCourse.id) return false; 
-            return isOverlapping(newCourse, existing);
-        });
-
-        if (overlaps.length > 0) {
-            overlaps.forEach(ov => {
-                const d = new Date(newCourse.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
-                conflictMessages.push(`CONFLITTO: ${d} ${newCourse.startTime}-${newCourse.endTime} vs "${ov.name}" (${ov.startTime})`);
-            });
-        }
-    }
-
-    if (conflictMessages.length > 0) {
-        setConflictMessages(conflictMessages);
-        setPendingCoursesToSave(newCoursesData);
-        setIsConflictModalOpen(true);
-        return; 
-    }
-
-    executeSave(newCoursesData);
-  };
-
-  const handleConfirmConflict = () => {
-    executeSave(pendingCoursesToSave);
-    setIsConflictModalOpen(false);
-    setPendingCoursesToSave([]);
-    setConflictMessages([]);
-  };
-
-  const handleAddCourses = (newCoursesData: Course[]) => {
-    validateAndSaveCourses(newCoursesData);
+  const handleAddInstitute = (name: string, color: string) => {
+     const newInst: Institute = {
+         id: Date.now().toString(),
+         name,
+         color
+     };
+     setInstitutes([...institutes, newInst]);
+     return newInst; 
   };
   
-  const handleImport = (newCourses: Course[]) => {
-    validateAndSaveCourses(newCourses);
-  };
+  const onAddInstituteWrapper = (name: string) => handleAddInstitute(name, DEFAULT_COLOR);
 
-  const handleUpdateCourse = (updatedCourse: Course) => {
-    setCourses(courses.map(c => c.id === updatedCourse.id ? updatedCourse : c));
-  };
-
-  const handleDelete = (id: string) => {
-    if(window.confirm("Sei sicuro di voler eliminare DEFINITIVAMENTE questa lezione?")) {
-        setCourses(courses.filter(c => c.id !== id));
-    }
-  };
-
-  const handleEdit = (course: Course) => {
-    setEditingCourse(course);
-    setIsFormOpen(true);
-  };
-
-  // --- INSTITUTE MANAGEMENT ---
-
-  const handleAddInstitute = (name: string, color?: string): Institute => {
-    const newInst: Institute = {
-      id: Date.now().toString() + Math.random(),
-      name,
-      color: color || DEFAULT_COLOR
-    };
-    setInstitutes(prev => [...prev, newInst]);
-    return newInst;
-  };
-
-  const handleUpdateInstitute = (updatedInst: Institute) => {
-    setInstitutes(prev => prev.map(i => i.id === updatedInst.id ? updatedInst : i));
+  const handleUpdateInstitute = (inst: Institute) => {
+     setInstitutes(institutes.map(i => i.id === inst.id ? inst : i));
   };
 
   const handleDeleteInstitute = (id: string) => {
-    if (window.confirm("Eliminare questo istituto? Le lezioni associate perderanno il riferimento.")) {
-      setInstitutes(prev => prev.filter(i => i.id !== id));
-    }
+     setInstitutes(institutes.filter(i => i.id !== id));
   };
 
-  const getInstitute = (id?: string) => institutes.find(i => i.id === id);
+  const checkForConflicts = (newCourses: Course[]): string[] => {
+      const conflicts: string[] = [];
+      newCourses.forEach(newC => {
+          const [newStartH, newStartM] = newC.startTime.split(':').map(Number);
+          const [newEndH, newEndM] = newC.endTime.split(':').map(Number);
+          const newStart = newStartH * 60 + newStartM;
+          const newEnd = newEndH * 60 + newEndM;
 
-  // --- Filtering Logic ---
+          courses.forEach(existingC => {
+              if (existingC.id === newC.id) return; 
+              if (existingC.date !== newC.date) return;
 
-  const handleDateSelection = (date: string) => {
-    if (date === selectedDate) {
-      setSelectedDate('');
-    } else {
-      setSelectedDate(date);
-      setTimeout(() => {
-        listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
-    }
+              const [exStartH, exStartM] = existingC.startTime.split(':').map(Number);
+              const [exEndH, exEndM] = existingC.endTime.split(':').map(Number);
+              const exStart = exStartH * 60 + exStartM;
+              const exEnd = exEndH * 60 + exEndM;
+
+              if (newStart < exEnd && newEnd > exStart) {
+                  conflicts.push(`CONFLITTO: ${newC.date} - ${newC.startTime}/${newC.endTime} sovrapposto a ${existingC.name} (${existingC.startTime}-${existingC.endTime})`);
+              }
+          });
+      });
+      return conflicts;
   };
 
-  const getDaysInMonthWithCourses = () => {
-    const dates = new Set<string>();
-    courses.forEach(c => {
-      const d = new Date(c.date);
-      if (d.getMonth() === viewMonth && d.getFullYear() === viewYear) {
-        dates.add(c.date);
+  const handleSaveCourses = (newCourses: Course[]) => {
+      const conflicts = checkForConflicts(newCourses);
+      
+      if (conflicts.length > 0) {
+          setPendingCoursesToSave(newCourses);
+          setConflictMessages(conflicts);
+          setIsConflictModalOpen(true);
+          return;
       }
-    });
-    return Array.from(dates).sort();
+      
+      finalizeSave(newCourses);
   };
 
-  const getCoursesInViewMonth = () => {
-     return courses.filter(c => {
-         const d = new Date(c.date);
-         return d.getMonth() === viewMonth && d.getFullYear() === viewYear;
-     });
+  const finalizeSave = (newCourses: Course[]) => {
+      let updatedCourses = [...courses];
+      
+      newCourses.forEach(nc => {
+          const index = updatedCourses.findIndex(c => c.id === nc.id);
+          if (index >= 0) {
+              updatedCourses[index] = nc;
+          } else {
+              updatedCourses.push(nc);
+          }
+      });
+      
+      setCourses(updatedCourses);
+      setIsConflictModalOpen(false);
+      setEditingCourse(null);
   };
 
-  const filteredCourses = getCoursesInViewMonth()
-    .filter(c => {
-      if (selectedDate && c.date !== selectedDate) return false;
-      return true;
-    })
-    .sort((a, b) => a.startTime.localeCompare(b.startTime));
-
-  const changeMonth = (delta: number) => {
-    let m = viewMonth + delta;
-    let y = viewYear;
-    if (m > 11) { m = 0; y++; }
-    if (m < 0) { m = 11; y--; }
-    setViewMonth(m);
-    setViewYear(y);
-    setSelectedDate(''); 
+  const handleImportCourses = (importedCourses: Course[]) => {
+      const conflicts = checkForConflicts(importedCourses);
+      if (conflicts.length > 0) {
+          setPendingCoursesToSave(importedCourses);
+          setConflictMessages(conflicts);
+          setIsConflictModalOpen(true);
+      } else {
+          setCourses([...courses, ...importedCourses]);
+      }
   };
 
-  const monthName = new Date(viewYear, viewMonth).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+  const handleDeleteCourse = (id: string) => {
+      setCourses(courses.filter(c => c.id !== id));
+  };
+  
+  const handleUpdateCourse = (course: Course) => {
+      setCourses(courses.map(c => c.id === course.id ? course : c));
+  };
+
+  const filteredCourses = courses.filter(c => c.date === selectedDate).sort((a,b) => a.startTime.localeCompare(b.startTime));
+  const coursesInMonth = courses.filter(c => {
+      const d = new Date(c.date);
+      return d.getMonth() === viewMonth && d.getFullYear() === viewYear;
+  });
+
+  const changeDate = (offset: number) => {
+      const d = new Date(selectedDate);
+      d.setDate(d.getDate() + offset);
+      const newDate = d.toISOString().split('T')[0];
+      setSelectedDate(newDate);
+      
+      if (d.getMonth() !== viewMonth) setViewMonth(d.getMonth());
+      if (d.getFullYear() !== viewYear) setViewYear(d.getFullYear());
+  };
 
   return (
-    <div className="min-h-screen font-sans text-white">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-20 selection:bg-purple-500/30">
       
-      {/* Background */}
-      <div className="fixed inset-0 w-full h-full overflow-hidden bg-slate-900 z-[-1]">
-         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"></div>
-         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-purple-900/20 rounded-full blur-[120px] animate-pulse" style={{animationDuration: '8s'}} />
-         <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-blue-900/20 rounded-full blur-[120px] animate-pulse" style={{animationDuration: '10s'}} />
-      </div>
-
-      <div className="relative z-10 max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6 pb-24">
-        
-        {/* Header */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 sticky top-0 bg-slate-900/80 backdrop-blur-xl p-4 -mx-3 sm:-mx-4 rounded-b-2xl border-b border-white/5 z-40 transition-all shadow-lg shadow-black/20">
-          <div className="flex-1">
-            <h1 className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400 flex items-center gap-2">
-              <Briefcase className="text-purple-400" /> ProfPlanner AI
+      {/* HEADER */}
+      <header className="fixed top-0 inset-x-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-white/5 p-4 safe-top">
+        <div className="max-w-3xl mx-auto flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent flex items-center gap-2">
+              <Briefcase className="text-purple-400" size={24} />
+              ProfPlanner
             </h1>
-            <p className="text-slate-400 text-xs md:text-sm mt-1">Gestisci il tuo diario formativo</p>
+            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">{todayFormatted}</p>
           </div>
-          
-          <div className="flex items-center justify-between md:justify-end gap-2 sm:gap-4 w-full md:w-auto mt-2 md:mt-0">
-             <div className="flex flex-col items-start md:items-end text-left md:text-right border-l md:border-l-0 md:border-r border-white/10 pl-3 md:pl-0 md:pr-4 mr-auto md:mr-0">
-                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Oggi</span>
-                <span className="text-sm sm:text-lg font-bold text-white capitalize flex items-center gap-2 whitespace-nowrap">
-                   {todayFormatted}
-                </span>
+          <div className="flex gap-2">
+             <button 
+               onClick={() => setIsSettingsOpen(true)}
+               className="p-2 bg-slate-800 rounded-full hover:bg-slate-700 transition"
+             >
+                <Settings size={20} className="text-slate-400" />
+             </button>
+          </div>
+        </div>
+      </header>
+
+      {/* MAIN CONTENT */}
+      <main className="max-w-3xl mx-auto pt-24 px-4 sm:px-6">
+        
+        {/* VIEW CONTROLS */}
+        <div className="flex justify-between items-center mb-6">
+             {viewMode === 'list' ? (
+                 <div className="flex items-center gap-3 bg-slate-800/50 p-1.5 rounded-xl border border-white/5">
+                    <button onClick={() => changeDate(-1)} className="p-1 hover:bg-white/10 rounded-lg"><ChevronLeft size={20} /></button>
+                    <div className="flex flex-col items-center w-32 cursor-pointer group relative">
+                        <input 
+                          type="date" 
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                          value={selectedDate}
+                          onChange={(e) => setSelectedDate(e.target.value)}
+                        />
+                        <span className="text-sm font-bold text-white group-hover:text-purple-400 transition">
+                            {new Date(selectedDate).toLocaleDateString('it-IT', { day: '2-digit', month: 'long' })}
+                        </span>
+                        <span className="text-[10px] text-slate-500 uppercase font-bold">
+                            {new Date(selectedDate).toLocaleDateString('it-IT', { weekday: 'long' })}
+                        </span>
+                    </div>
+                    <button onClick={() => changeDate(1)} className="p-1 hover:bg-white/10 rounded-lg"><ChevronRight size={20} /></button>
+                 </div>
+             ) : (
+                 <div className="flex items-center gap-2">
+                     <button onClick={() => {
+                         const d = new Date(viewYear, viewMonth - 1);
+                         setViewMonth(d.getMonth()); setViewYear(d.getFullYear());
+                     }} className="p-2 bg-slate-800 rounded-lg hover:bg-slate-700"><ChevronLeft size={16}/></button>
+                     <span className="text-lg font-bold w-32 text-center">
+                         {new Date(viewYear, viewMonth).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
+                     </span>
+                     <button onClick={() => {
+                         const d = new Date(viewYear, viewMonth + 1);
+                         setViewMonth(d.getMonth()); setViewYear(d.getFullYear());
+                     }} className="p-2 bg-slate-800 rounded-lg hover:bg-slate-700"><ChevronRight size={16}/></button>
+                 </div>
+             )}
+
+             <div className="bg-slate-800/50 p-1 rounded-lg border border-white/5 flex">
+                <button 
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 rounded-md transition ${viewMode === 'list' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                >
+                   <List size={18} />
+                </button>
+                <button 
+                  onClick={() => setViewMode('calendar')}
+                  className={`p-2 rounded-md transition ${viewMode === 'calendar' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                >
+                   <LayoutGrid size={18} />
+                </button>
              </div>
-
-            <div className="flex gap-2">
-                
-                <button 
-                  onClick={() => setIsSettingsOpen(true)}
-                  className="p-2 sm:px-3 sm:py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition flex items-center gap-2 text-sm font-medium backdrop-blur-md"
-                  title="Impostazioni"
-                >
-                  <Settings size={18} className="text-slate-300" />
-                </button>
-
-                <button 
-                  onClick={() => setIsImportOpen(true)}
-                  className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition flex items-center gap-2 text-sm font-medium backdrop-blur-md"
-                >
-                  <Upload size={18} className="text-blue-400" />
-                  <span className="hidden sm:inline">Importa</span>
-                </button>
-                <button 
-                  onClick={() => { setEditingCourse(null); setIsFormOpen(true); }}
-                  className="px-3 sm:px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 rounded-xl transition flex items-center gap-2 text-sm font-medium shadow-lg shadow-purple-900/30 active:scale-95 whitespace-nowrap"
-                >
-                  <Plus size={18} />
-                  Nuovo
-                </button>
-            </div>
-          </div>
-        </header>
-
-        {/* Month Navigation Control */}
-        <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-2 mb-4 backdrop-blur-sm">
-           <button onClick={() => changeMonth(-1)} className="p-3 hover:bg-white/10 rounded-xl transition">
-             <ChevronLeft size={20}/>
-           </button>
-           
-           <h2 className="text-lg sm:text-xl font-bold capitalize text-center">{monthName}</h2>
-           
-           <button onClick={() => changeMonth(1)} className="p-3 hover:bg-white/10 rounded-xl transition">
-             <ChevronRight size={20} />
-           </button>
         </div>
 
-        {/* --- STATS OVERVIEW --- */}
-        <StatsOverview 
-            courses={getCoursesInViewMonth()} 
-            monthName={monthName}
-        />
+        <StatsOverview courses={coursesInMonth} monthName="" />
 
-        {/* View Toggle */}
-        <div className="flex bg-slate-900/50 p-1 rounded-xl mb-6 w-full sm:w-fit mx-auto border border-white/5">
-           <button 
-             onClick={() => setViewMode('list')}
-             className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition ${
-               viewMode === 'list' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'
-             }`}
-           >
-             <List size={16} /> Lista
-           </button>
-           <button 
-             onClick={() => setViewMode('calendar')}
-             className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition ${
-               viewMode === 'calendar' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'
-             }`}
-           >
-             <LayoutGrid size={16} /> Calendario
-           </button>
+        {/* CONTENT AREA */}
+        <div ref={listRef} className="min-h-[300px]">
+           {viewMode === 'list' ? (
+              <div className="space-y-3 pb-24">
+                 {filteredCourses.length === 0 ? (
+                    <div className="text-center py-12 opacity-50 flex flex-col items-center">
+                       <CalendarIcon size={48} className="mb-4 text-slate-600" />
+                       <p className="text-lg font-medium">Nessuna lezione in questa data</p>
+                       <p className="text-sm text-slate-500">Goditi il tempo libero!</p>
+                       <button onClick={() => setIsFormOpen(true)} className="mt-4 text-purple-400 text-sm hover:underline">
+                          Oppure aggiungi una lezione
+                       </button>
+                    </div>
+                 ) : (
+                    filteredCourses.map(course => (
+                       <CourseCard 
+                         key={course.id} 
+                         course={course} 
+                         institute={institutes.find(i => i.id === course.instituteId)}
+                         onEdit={(c) => { setEditingCourse(c); setIsFormOpen(true); }}
+                         onDelete={handleDeleteCourse}
+                         onUpdate={handleUpdateCourse}
+                       />
+                    ))
+                 )}
+              </div>
+           ) : (
+              <CalendarView 
+                courses={courses} 
+                institutes={institutes} 
+                year={viewYear} 
+                month={viewMonth}
+                selectedDate={selectedDate}
+                onSelectDate={(d) => { setSelectedDate(d); setViewMode('list'); }}
+              />
+           )}
         </div>
 
-        {/* --- VIEW: CALENDAR --- */}
-        <div className={`transition-all duration-500 ${viewMode === 'calendar' ? 'opacity-100 max-h-[800px]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
-           <div className="mb-6">
-             <CalendarView 
-               courses={courses}
-               institutes={institutes}
-               year={viewYear}
-               month={viewMonth}
-               selectedDate={selectedDate}
-               onSelectDate={handleDateSelection}
-             />
-           </div>
-        </div>
+      </main>
 
-        {/* --- VIEW: LIST (Horizontal Scroller) --- */}
-        {viewMode === 'list' && (
-          <div className="mb-6 overflow-x-auto pb-2 custom-scrollbar -mx-2 px-2">
-            <div className="flex gap-2 min-w-max">
-              <button
-                 onClick={() => setSelectedDate('')}
-                 className={`px-3 sm:px-4 py-2 sm:py-3 rounded-xl text-sm whitespace-nowrap transition border flex flex-col items-center justify-center min-w-[60px] sm:min-w-[70px] ${
-                   selectedDate === '' 
-                   ? 'bg-purple-600 border-purple-400 text-white shadow-lg shadow-purple-900/40' 
-                   : 'bg-slate-800/50 border-white/10 text-slate-400 hover:bg-slate-800'
-                 }`}
-              >
-                <span className="text-[10px] uppercase font-bold tracking-wider opacity-70">Tutto</span>
-                <span className="font-bold text-lg leading-none mt-1">{monthName.slice(0,3)}</span>
-              </button>
-
-              {getDaysInMonthWithCourses().map(dateStr => {
-                 const date = new Date(dateStr);
-                 const isSelected = selectedDate === dateStr;
-                 const dayName = date.toLocaleDateString('it-IT', { weekday: 'short' });
-                 const dayNum = date.getDate();
-                 
-                 return (
-                   <button
-                     key={dateStr}
-                     onClick={() => handleDateSelection(dateStr)}
-                     className={`px-3 sm:px-4 py-2 sm:py-3 rounded-xl text-sm whitespace-nowrap transition border flex flex-col items-center justify-center min-w-[60px] sm:min-w-[70px] ${
-                       isSelected
-                       ? 'bg-purple-600 border-purple-400 text-white shadow-lg shadow-purple-900/40 transform scale-105' 
-                       : 'bg-slate-800/50 border-white/10 text-slate-300 hover:bg-slate-800'
-                     }`}
-                   >
-                     <span className={`text-[10px] uppercase font-bold tracking-wider ${isSelected ? 'text-purple-200' : 'text-slate-500'}`}>{dayName}</span>
-                     <span className="font-bold text-lg leading-none mt-1">{dayNum}</span>
-                   </button>
-                 );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* --- COURSE LIST --- */}
-        <div ref={listRef} className="space-y-4 min-h-[300px]">
-          {selectedDate ? (
-            <div className="flex items-center justify-between mb-2 px-1 animate-in fade-in slide-in-from-left-2">
-               <div className="flex items-center gap-2">
-                   <div className="w-1 h-4 bg-purple-500 rounded-full"></div>
-                   <h3 className="font-bold text-slate-200 capitalize">
-                     {new Date(selectedDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}
-                   </h3>
-               </div>
-               <button 
-                  onClick={() => { setEditingCourse(null); setIsFormOpen(true); }}
-                  className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-lg flex items-center gap-1 transition shadow-lg shadow-purple-900/40"
-               >
-                 <Plus size={14} /> Aggiungi Lezione
-               </button>
-            </div>
-          ) : null}
-
-          {filteredCourses.length > 0 ? (
-            <>
-              {filteredCourses.map(course => (
-                <CourseCard 
-                  key={course.id} 
-                  course={course}
-                  institute={getInstitute(course.instituteId)}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  onUpdate={handleUpdateCourse}
-                />
-              ))}
-            </>
-          ) : (
-             <div className="flex flex-col items-center justify-center py-12 text-slate-500 border border-dashed border-white/10 rounded-2xl bg-slate-900/30">
-                <CalendarIcon size={48} className="mb-4 opacity-20" />
-                <p className="text-lg font-medium">Nessuna lezione trovata</p>
-                <p className="text-sm opacity-60 mb-4">Seleziona un altro giorno o aggiungi un corso</p>
-                
-                {selectedDate && (
-                    <button 
-                      onClick={() => { setEditingCourse(null); setIsFormOpen(true); }}
-                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg flex items-center gap-2 transition"
-                    >
-                      <Plus size={16} /> Aggiungi Lezione Ora
-                    </button>
-                )}
-             </div>
-          )}
-        </div>
-
+      {/* FABs */}
+      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-30">
+        <button 
+          onClick={() => setIsImportOpen(true)}
+          className="w-12 h-12 bg-slate-800 border border-white/10 text-slate-300 rounded-full shadow-xl flex items-center justify-center hover:bg-slate-700 hover:text-white transition"
+          title="Importa da testo"
+        >
+           <Upload size={20} />
+        </button>
+        <button 
+          onClick={() => { setEditingCourse(null); setIsFormOpen(true); }}
+          className="w-14 h-14 bg-gradient-to-tr from-purple-600 to-blue-600 text-white rounded-2xl shadow-xl shadow-purple-900/30 flex items-center justify-center hover:scale-105 active:scale-95 transition"
+          title="Nuova Lezione"
+        >
+           <Plus size={28} />
+        </button>
       </div>
 
-      {/* Modals */}
+      {/* MODALS */}
       <CourseForm 
-        isOpen={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
-        onSubmit={handleAddCourses}
-        initialData={editingCourse}
-        institutes={institutes}
-        onAddInstitute={handleAddInstitute} // Uses the wrapped function
-        preselectedDate={selectedDate || undefined}
+         isOpen={isFormOpen} 
+         onClose={() => { setIsFormOpen(false); setEditingCourse(null); }} 
+         onSubmit={handleSaveCourses}
+         initialData={editingCourse}
+         institutes={institutes}
+         onAddInstitute={onAddInstituteWrapper}
+         preselectedDate={selectedDate}
       />
 
       <ImportModal 
-        isOpen={isImportOpen}
-        onClose={() => setIsImportOpen(false)}
-        onImport={handleImport}
+         isOpen={isImportOpen} 
+         onClose={() => setIsImportOpen(false)} 
+         onImport={handleImportCourses} 
       />
 
       <ConflictModal 
-        isOpen={isConflictModalOpen}
-        onClose={() => {
-            setIsConflictModalOpen(false);
-            setPendingCoursesToSave([]);
-            setConflictMessages([]);
-        }}
-        onConfirm={handleConfirmConflict}
-        conflicts={conflictMessages}
+         isOpen={isConflictModalOpen} 
+         onClose={() => { setIsConflictModalOpen(false); setPendingCoursesToSave([]); }} 
+         onConfirm={() => finalizeSave(pendingCoursesToSave)}
+         conflicts={conflictMessages}
       />
       
-      {/* Settings Modal */}
       <SettingsModal 
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        notificationsEnabled={notificationsEnabled}
-        onToggleNotifications={toggleNotifications}
-        institutes={institutes}
-        onAddInstitute={handleAddInstitute}
-        onUpdateInstitute={handleUpdateInstitute}
-        onDeleteInstitute={handleDeleteInstitute}
+         isOpen={isSettingsOpen} 
+         onClose={() => setIsSettingsOpen(false)} 
+         notificationsEnabled={notificationsEnabled}
+         onToggleNotifications={handleToggleNotifications}
+         institutes={institutes}
+         onAddInstitute={handleAddInstitute}
+         onUpdateInstitute={handleUpdateInstitute}
+         onDeleteInstitute={handleDeleteInstitute}
       />
-
+      
       {notificationCourses.length > 0 && (
-        <NotificationModal 
-          courses={notificationCourses}
-          onClose={() => setNotificationCourses([])}
-        />
+         <NotificationModal 
+            courses={notificationCourses} 
+            onClose={() => setNotificationCourses([])} 
+         />
       )}
 
     </div>
