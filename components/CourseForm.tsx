@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Course, Modality, Institute } from '../types';
-import { X, Save, Calendar, Clock, MapPin, Laptop, Building2, Plus, Trash2, Check } from 'lucide-react';
+import { X, Save, Calendar, Building2, Plus, Trash2, Check } from 'lucide-react';
 
 interface CourseFormProps {
   isOpen: boolean;
@@ -232,7 +232,7 @@ const CourseForm: React.FC<CourseFormProps> = ({
               </div>
               
               <div className="space-y-3">
-                {sessions.map((session, index) => (
+                {sessions.map((session) => (
                   <div key={session.id} className="bg-slate-800/30 p-3 rounded-lg border border-white/5 flex flex-col md:flex-row gap-3 items-end md:items-center animate-in slide-in-from-bottom-2">
                     
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 flex-1 w-full">

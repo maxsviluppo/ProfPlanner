@@ -7,7 +7,7 @@ interface StatsOverviewProps {
   monthName: string;
 }
 
-const StatsOverview: React.FC<StatsOverviewProps> = ({ courses, monthName }) => {
+const StatsOverview: React.FC<StatsOverviewProps> = ({ courses }) => {
   
   const stats = useMemo(() => {
     let totalMinutes = 0;

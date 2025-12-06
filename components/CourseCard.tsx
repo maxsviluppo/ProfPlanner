@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Course, Institute } from '../types';
-import { Clock, MapPin, Laptop, Edit2, Trash2, Hash, Building2, CheckCircle2, ChevronDown, ChevronUp, BookOpen, StickyNote, ExternalLink, Save, X } from 'lucide-react';
+import { Clock, MapPin, Laptop, Edit2, Trash2, Hash, Building2, CheckCircle2, ChevronDown, ChevronUp, BookOpen, StickyNote, ExternalLink, Save } from 'lucide-react';
 
 interface CourseCardProps {
   course: Course;
@@ -20,7 +20,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
 
   const isDad = course.modality === 'DAD';
   const isCompleted = course.completed || false;
-  const hasTopics = course.topics && course.topics.trim().length > 0;
+  // FORCE BOOLEAN to avoid TS2322 (string | undefined is not boolean)
+  const hasTopics = !!(course.topics && course.topics.trim().length > 0);
   
   const titleStyle = institute 
     ? { color: institute.color, textShadow: `0 0 15px ${institute.color}40` } 

@@ -32,6 +32,8 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
         onClose();
       }
     } catch (err) {
+      // Logghiamo l'errore per evitare "unused variable" in TypeScript strict mode
+      console.error("Import error:", err);
       setError("Errore durante l'elaborazione. Verifica la connessione o i dati.");
     } finally {
       setIsLoading(false);

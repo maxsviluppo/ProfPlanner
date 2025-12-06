@@ -262,9 +262,6 @@ const App: React.FC = () => {
   };
 
   const monthName = new Date(viewYear, viewMonth).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
-  const displayDate = selectedDate 
-    ? new Date(selectedDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
-    : `${monthName}`;
 
   return (
     <div className="min-h-screen font-sans text-white">

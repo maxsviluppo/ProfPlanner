@@ -1,6 +1,6 @@
 import React from 'react';
 import { Course } from '../types';
-import { Bell, X, CalendarCheck } from 'lucide-react';
+import { Bell } from 'lucide-react';
 
 interface NotificationModalProps {
   courses: Course[];
