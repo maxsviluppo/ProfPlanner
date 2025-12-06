@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Institute } from '../types';
-import { X, Bell, BellOff, Plus, Trash2, Settings, Palette, Euro, Clock, BookOpen, Edit2 } from 'lucide-react';
+import { X, Bell, BellOff, Plus, Trash2, Settings, Euro, Clock, Edit2 } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
