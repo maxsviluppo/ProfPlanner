@@ -1,5 +1,7 @@
 {
   "name": "ProfPlanner AI",
   "description": "Diario digitale intelligente per docenti con importazione assistita da AI, tema dark glass e gestione orari.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }

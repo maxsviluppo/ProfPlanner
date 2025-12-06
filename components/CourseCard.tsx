@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Course, Institute } from '../types';
-import { MapPin, Laptop, Edit2, Trash2, Building2, CheckCircle2, ChevronDown, ChevronUp, StickyNote, ExternalLink, Save, Sun, Moon } from 'lucide-react';
+import { MapPin, Laptop, Edit2, Trash2, Building2, CheckCircle2, ChevronDown, ChevronUp, StickyNote, ExternalLink, Save, Sun, Moon, Mic, MicOff } from 'lucide-react';
 
 interface CourseCardProps {
   course: Course;
@@ -10,11 +10,26 @@ interface CourseCardProps {
   onUpdate: (course: Course) => void;
 }
 
+// Type definition for Web Speech API
+declare global {
+  interface Window {
+    webkitSpeechRecognition: any;
+    SpeechRecognition: any;
+  }
+}
+
 const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDelete, onUpdate }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditingTopics, setIsEditingTopics] = useState(false);
   
-  // Animation state for the "bounce" effect and completion
+  // Local state for topics to prevent keyboard closing on every keystroke
+  const [localTopics, setLocalTopics] = useState(course.topics || '');
+  
+  // Voice Dictation State
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  // Animation state
   const [isAnimating, setIsAnimating] = useState(false);
   
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -23,7 +38,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
 
   const isDad = course.modality === 'DAD';
   const isCompleted = course.completed || false;
-  // FORCE BOOLEAN to avoid TS2322
+  // FORCE BOOLEAN
   const hasTopics = !!(course.topics && course.topics.trim().length > 0);
   
   const instituteColor = institute?.color || '#94a3b8'; // Default slate-400
@@ -33,8 +48,58 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
   const isMorning = startHour < 14;
   const timeOfDayLabel = isMorning ? 'MATTINA' : 'POMERIGGIO';
 
-  // LOWERED THRESHOLD: Was 175, now 80 for easier triggering
   const swipeThreshold = 80;
+
+  // Sync local state when course updates from outside (unless we are editing)
+  useEffect(() => {
+    if (!isEditingTopics) {
+      setLocalTopics(course.topics || '');
+    }
+  }, [course.topics, isEditingTopics]);
+
+  // --- Voice Dictation Logic ---
+  const toggleListening = (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    if (isListening) {
+      if (recognitionRef.current) recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Il tuo browser non supporta la dettatura vocale.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'it-IT';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setLocalTopics((prev) => prev + (prev ? ' ' : '') + transcript);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("Errore riconoscimento vocale:", event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  };
+
 
   // --- Linkify Helper ---
   const renderTextWithLinks = (text: string) => {
@@ -62,7 +127,6 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
 
   // --- Swipe Handlers ---
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
-    // Prevent swipe on inputs
     if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
     
     setIsSwiping(true);
@@ -74,8 +138,6 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
     if (!isSwiping || touchStart === null) return;
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
     const diff = clientX - touchStart;
-    
-    // Add resistance (damping) as you swipe further
     const dampedDiff = diff / (1 + Math.abs(diff) / 600);
     setTranslateX(dampedDiff);
   };
@@ -86,46 +148,36 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
       setTranslateX(0);
       return;
     }
-
     const absX = Math.abs(translateX);
 
     if (absX > swipeThreshold) {
       if (translateX > 0) {
-        // Edit action
         setTranslateX(0); 
         onEdit(course);
       } else {
-        // Delete action logic fixed:
-        // 1. Snap back to 0 immediately so if user cancels 'window.confirm', the card is visible.
         setTranslateX(0); 
-        // 2. Small delay to let React update the position before the alert blocks the thread
         setTimeout(() => onDelete(course.id), 50); 
       }
     } else {
-      // Snap back if threshold not met
       setTranslateX(0);
     }
-    
     setTouchStart(null);
   };
 
   const handleToggleComplete = (e: React.ChangeEvent<HTMLInputElement>) => {
     const isChecked = e.target.checked;
-    
-    // Trigger animation
     setIsAnimating(true);
-    
-    // Perform update
     onUpdate({ ...course, completed: isChecked });
-
-    // Stop animation after a short delay
     setTimeout(() => {
       setIsAnimating(false);
     }, 400);
   };
 
-  const handleTopicsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onUpdate({ ...course, topics: e.target.value });
+  // Save changes from local state to global state
+  const saveTopics = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    onUpdate({ ...course, topics: localTopics });
+    setIsEditingTopics(false);
   };
 
   let bgClass = "bg-slate-900/60 border-white/10";
@@ -167,7 +219,6 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
         className={`relative z-10 backdrop-blur-md border rounded-2xl shadow-lg ${bgClass} overflow-hidden touch-pan-y`}
         style={{ 
           transform: `translateX(${translateX}px) scale(${scale})`,
-          // Snappier elastic return logic
           transition: isSwiping ? 'none' : 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.3s, border-color 0.3s', 
           cursor: isSwiping ? 'grabbing' : 'grab'
         }}
@@ -187,7 +238,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
           style={{ backgroundColor: isCompleted ? '#10b981' : instituteColor }} 
         />
 
-        {/* Compact Padding: p-3 instead of p-5 */}
+        {/* Compact Padding */}
         <div className="p-3 pl-5">
           
           {/* TOP ROW: Modality (Left) | Time of Day (Right) */}
@@ -212,7 +263,12 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
                 )}
              </div>
 
-             <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+             {/* UPDATED: Morning = Yellow/Amber, Afternoon = Violet/Purple */}
+             <div className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 px-1.5 py-0.5 rounded ${
+                 isMorning 
+                    ? 'text-amber-300 bg-amber-500/10 border border-amber-500/20' 
+                    : 'text-violet-300 bg-violet-500/10 border border-violet-500/20'
+             }`}>
                 {isMorning ? <Sun size={10} /> : <Moon size={10} />}
                 {timeOfDayLabel}
              </div>
@@ -221,7 +277,6 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
           {/* MIDDLE ROW: Name (Big Left) | Time (Right) */}
           <div className="flex items-center justify-between gap-3">
              <div className="flex-1 min-w-0">
-                {/* KEEPING FONT SIZE LARGE but reducing line height */}
                 <h3 className={`text-3xl sm:text-4xl font-black leading-none tracking-tight truncate pr-1 -ml-0.5 ${
                     isCompleted 
                     ? 'text-slate-500 line-through decoration-emerald-500/50 decoration-2' 
@@ -321,24 +376,36 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
                
                {isEditingTopics || !hasTopics ? (
                  <div className="relative group animate-in fade-in">
-                    <textarea
-                      autoFocus={hasTopics}
-                      className="w-full bg-slate-900/80 border border-white/10 group-hover:border-purple-500/30 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none transition-all shadow-inner custom-scrollbar"
-                      rows={4}
-                      placeholder="Cosa hai spiegato oggi? (Inserisci URL per creare link)"
-                      value={course.topics || ''}
-                      onChange={handleTopicsChange}
-                      onMouseDown={(e) => e.stopPropagation()} 
-                      onTouchStart={(e) => e.stopPropagation()} 
-                    />
-                    {hasTopics && (
+                    <div className="relative">
+                        <textarea
+                          autoFocus={hasTopics}
+                          className="w-full bg-slate-900/80 border border-white/10 group-hover:border-purple-500/30 rounded-xl p-3 pr-10 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none transition-all shadow-inner custom-scrollbar"
+                          rows={4}
+                          placeholder="Cosa hai spiegato oggi? Scrivilo qui o usa il microfono."
+                          value={localTopics}
+                          onChange={(e) => setLocalTopics(e.target.value)}
+                          onMouseDown={(e) => e.stopPropagation()} 
+                          onTouchStart={(e) => e.stopPropagation()} 
+                        />
+                        
+                        {/* Mic Button */}
                         <button 
-                            onClick={(e) => { e.stopPropagation(); setIsEditingTopics(false); }}
-                            className="absolute bottom-3 right-3 px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-lg shadow-lg flex items-center gap-1 transition"
+                            onClick={toggleListening}
+                            className={`absolute top-2 right-2 p-2 rounded-full transition-all ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-700/50 text-slate-400 hover:text-white'}`}
+                            title="Dettatura vocale"
                         >
-                            <Save size={12} /> Fine
+                            {isListening ? <MicOff size={16} /> : <Mic size={16} />}
                         </button>
-                    )}
+                    </div>
+
+                    <div className="flex justify-end mt-2">
+                        <button 
+                            onClick={saveTopics}
+                            className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-lg shadow-lg flex items-center gap-1 transition"
+                        >
+                            <Save size={12} /> Salva Note
+                        </button>
+                    </div>
                  </div>
                ) : (
                  <div 
