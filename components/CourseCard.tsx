@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Course, Institute } from '../types';
-import { Clock, MapPin, Laptop, Edit2, Trash2, Hash, Building2, CheckCircle2, ChevronDown, ChevronUp, BookOpen, StickyNote, ExternalLink, Save } from 'lucide-react';
+import { Clock, MapPin, Laptop, Edit2, Trash2, Building2, CheckCircle2, ChevronDown, ChevronUp, StickyNote, ExternalLink, Save, Sun, Moon } from 'lucide-react';
 
 interface CourseCardProps {
   course: Course;
@@ -27,6 +27,11 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
   const hasTopics = !!(course.topics && course.topics.trim().length > 0);
   
   const instituteColor = institute?.color || '#94a3b8'; // Default slate-400
+
+  // Time of Day Logic
+  const startHour = parseInt(course.startTime.split(':')[0], 10);
+  const isMorning = startHour < 14;
+  const timeOfDayLabel = isMorning ? 'MATTINA' : 'POMERIGGIO';
 
   const swipeThreshold = 85;
 
@@ -124,7 +129,6 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
   if (isCompleted) bgClass = "bg-emerald-950/40 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]";
 
   const progress = Math.min(Math.abs(translateX) / swipeThreshold, 1); 
-  // const opacity = Math.max(0.6, 1 - progress * 0.4); 
   const scale = Math.max(0.98, 1 - progress * 0.02); 
   const iconScale = Math.min(0.8 + progress * 0.4, 1.2); 
   const iconOpacity = Math.min(progress, 1);
@@ -160,7 +164,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
         className={`relative z-10 backdrop-blur-md border rounded-2xl shadow-lg ${bgClass} overflow-hidden touch-pan-y`}
         style={{ 
           transform: `translateX(${translateX}px) scale(${scale})`,
-          // Snappier elastic return logic: when swiping use 'none', when releasing use a spring-like bezier
+          // Snappier elastic return logic
           transition: isSwiping ? 'none' : 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.3s, border-color 0.3s', 
           cursor: isSwiping ? 'grabbing' : 'grab'
         }}
@@ -180,68 +184,94 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
           style={{ backgroundColor: isCompleted ? '#10b981' : instituteColor }} 
         />
 
-        <div className="p-4 pl-5">
-          {/* Header Row: Time & Badges */}
-          <div className="flex justify-between items-center mb-3">
-             <div className="flex items-center gap-3">
-               <div className={`flex items-center gap-1.5 text-sm font-bold font-mono ${isCompleted ? 'text-emerald-400' : 'text-slate-200'}`}>
-                  <Clock size={16} className={isCompleted ? "text-emerald-500" : "text-purple-400"} />
-                  {course.startTime} - {course.endTime}
-               </div>
-               
-               {isDad ? (
-                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[10px] font-bold text-blue-300 uppercase tracking-wide">
-                   <Laptop size={10} /> Online
-                </div>
-               ) : (
-                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-300 uppercase tracking-wide">
-                   <MapPin size={10} /> Aula
-                </div>
-               )}
+        <div className="p-5 pl-6">
+          
+          {/* TOP ROW: Modality (Left) | Time of Day (Right) */}
+          <div className="flex justify-between items-start mb-2">
+             {/* Top Left: Aula/Dad */}
+             <div className="flex flex-col items-start gap-1">
+                {isDad ? (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-[10px] font-extrabold text-blue-300 uppercase tracking-widest shadow-sm">
+                     <Laptop size={10} /> Online
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-extrabold text-emerald-300 uppercase tracking-widest shadow-sm">
+                     <MapPin size={10} /> Aula
+                  </div>
+                )}
              </div>
 
-             <div className="flex items-center gap-2">
-                {isCompleted && <CheckCircle2 size={18} className="text-emerald-500" />}
+             {/* Top Right: Mattina/Pomeriggio */}
+             <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-extrabold uppercase tracking-widest shadow-sm ${
+                isMorning 
+                  ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' 
+                  : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300'
+             }`}>
+                {isMorning ? <Sun size={10} /> : <Moon size={10} />}
+                {timeOfDayLabel}
+             </div>
+          </div>
+
+          {/* MIDDLE ROW: Name (Big Left) | Time (Right) */}
+          <div className="flex items-end justify-between gap-4 mb-4">
+             <div className="flex-1 min-w-0">
+                <h3 className={`text-2xl sm:text-3xl font-black leading-tight tracking-tight truncate pr-2 ${
+                    isCompleted 
+                    ? 'text-slate-500 line-through decoration-emerald-500/50 decoration-2' 
+                    : 'bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent'
+                }`}>
+                  {course.name}
+                </h3>
+                
+                {/* Institute / Code Subtitle */}
+                <div className="flex items-center gap-2 mt-1">
+                    {institute && (
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                            <Building2 size={12} style={{ color: instituteColor }}/>
+                            <span className="uppercase tracking-wide opacity-80">{institute.name}</span>
+                        </div>
+                    )}
+                    {course.code && (
+                        <span className="text-[10px] font-mono text-slate-600 border border-slate-700 px-1 rounded">
+                            {course.code}
+                        </span>
+                    )}
+                </div>
+             </div>
+
+             <div className={`text-right shrink-0 flex flex-col items-end ${isCompleted ? 'opacity-50' : 'opacity-100'}`}>
+                <div className="flex items-center gap-1.5 text-lg font-bold font-mono text-slate-200">
+                   {course.startTime} 
+                </div>
+                <div className="text-xs text-slate-500 font-medium">
+                   {course.endTime}
+                </div>
+             </div>
+          </div>
+
+          {/* BOTTOM ROW: Topics Preview */}
+          <div className="flex items-end justify-between">
+             <div className="flex-1">
+                {hasTopics && !isExpanded && (
+                    <div className="mt-1 relative pl-3 border-l-2 border-slate-700/50">
+                        <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                            <span className="text-slate-500 font-bold mr-1 uppercase text-[10px] tracking-wide">Argomenti fatti:</span>
+                            {course.topics}
+                        </p>
+                    </div>
+                )}
+             </div>
+
+             {/* Expand Arrow */}
+             <div className="pl-2">
                 <button 
-                onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
-                className="text-slate-500 hover:text-white transition p-1 rounded-full hover:bg-white/5"
+                    onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
+                    className="text-slate-600 hover:text-white transition p-1.5 rounded-full hover:bg-white/5"
                 >
-                {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                 </button>
              </div>
           </div>
-
-          {/* Main Course Info */}
-          <div className="mb-3">
-            <h3 className={`text-xl font-extrabold leading-tight tracking-tight mb-1 ${isCompleted ? 'text-slate-400 line-through decoration-emerald-500/50' : 'text-white'}`}>
-              {course.name}
-            </h3>
-            
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                {institute && (
-                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
-                    <Building2 size={12} style={{ color: instituteColor }}/>
-                    <span className="uppercase tracking-wide opacity-90">{institute.name}</span>
-                </div>
-                )}
-                
-                {course.code && (
-                    <span className="text-[10px] font-mono text-slate-500 bg-slate-800/50 px-1.5 py-0.5 rounded border border-white/5">
-                    {course.code}
-                    </span>
-                )}
-            </div>
-          </div>
-
-          {/* Topics Preview (Visible in collapsed state) */}
-          {hasTopics && !isExpanded && (
-             <div className="mt-3 relative pl-3 border-l-2 border-slate-700/50">
-                 <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
-                    <span className="text-purple-400 font-bold mr-1">Note:</span>
-                    {course.topics}
-                 </p>
-             </div>
-          )}
 
         </div>
 
@@ -279,9 +309,9 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
             {/* Argomenti Section - View/Edit Mode */}
             <div className="space-y-2">
                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2 text-purple-300">
-                      <StickyNote size={16} />
-                      <span className="text-xs font-bold uppercase tracking-wider">Argomenti del giorno</span>
+                  <div className="flex items-center gap-2 text-slate-300">
+                      <StickyNote size={16} className="text-purple-400"/>
+                      <span className="text-xs font-bold uppercase tracking-wider">Argomenti fatti</span>
                   </div>
                   {hasTopics && !isEditingTopics && (
                       <button 
@@ -299,7 +329,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
                       autoFocus={hasTopics}
                       className="w-full bg-slate-900/80 border border-white/10 group-hover:border-purple-500/30 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none transition-all shadow-inner custom-scrollbar"
                       rows={4}
-                      placeholder="Scrivi qui gli argomenti... (Inserisci URL per creare link)"
+                      placeholder="Cosa hai spiegato oggi? (Inserisci URL per creare link)"
                       value={course.topics || ''}
                       onChange={handleTopicsChange}
                       onMouseDown={(e) => e.stopPropagation()} 
