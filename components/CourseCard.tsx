@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Course, Institute } from '../types';
-import { Clock, MapPin, Laptop, Edit2, Trash2, Building2, CheckCircle2, ChevronDown, ChevronUp, StickyNote, ExternalLink, Save, Sun, Moon } from 'lucide-react';
+import { MapPin, Laptop, Edit2, Trash2, Building2, CheckCircle2, ChevronDown, ChevronUp, StickyNote, ExternalLink, Save, Sun, Moon } from 'lucide-react';
 
 interface CourseCardProps {
   course: Course;
