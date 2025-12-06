@@ -4,6 +4,8 @@ export interface Institute {
   id: string;
   name: string;
   color: string; // Hex code or tailwind class
+  defaultRate?: number; // Costo
+  rateType?: 'HOURLY' | 'PER_LESSON'; // Tipo di tariffa
 }
 
 export interface Course {

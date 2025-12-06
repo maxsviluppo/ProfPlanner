@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Institute } from '../types';
-import { X, Bell, BellOff, Building2, Plus, Trash2, Settings, Check, Palette } from 'lucide-react';
+import { X, Bell, BellOff, Building2, Plus, Trash2, Settings, Check, Palette, Euro, Clock, BookOpen } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -8,7 +8,7 @@ interface SettingsModalProps {
   notificationsEnabled: boolean;
   onToggleNotifications: () => void;
   institutes: Institute[];
-  onAddInstitute: (name: string, color: string) => void;
+  onAddInstitute: (name: string, color: string, rate?: number, rateType?: 'HOURLY' | 'PER_LESSON') => void;
   onUpdateInstitute: (institute: Institute) => void;
   onDeleteInstitute: (id: string) => void;
 }
@@ -40,6 +40,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   // Institute Form State
   const [newInstName, setNewInstName] = useState('');
   const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[0]);
+  const [rate, setRate] = useState<string>('');
+  const [rateType, setRateType] = useState<'HOURLY' | 'PER_LESSON'>('HOURLY');
+  
   const [editingId, setEditingId] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -47,31 +50,42 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleSaveInstitute = () => {
     if (!newInstName.trim()) return;
 
+    const numRate = rate ? parseFloat(rate) : 0;
+
     if (editingId) {
       // Update existing
       const inst = institutes.find(i => i.id === editingId);
       if (inst) {
-        onUpdateInstitute({ ...inst, name: newInstName, color: selectedColor });
+        onUpdateInstitute({ 
+          ...inst, 
+          name: newInstName, 
+          color: selectedColor,
+          defaultRate: numRate,
+          rateType: rateType
+        });
       }
-      setEditingId(null);
+      resetForm();
     } else {
       // Create new
-      onAddInstitute(newInstName, selectedColor);
+      onAddInstitute(newInstName, selectedColor, numRate, rateType);
+      resetForm();
     }
-    setNewInstName('');
-    setSelectedColor(PRESET_COLORS[0]);
   };
 
   const startEdit = (inst: Institute) => {
     setEditingId(inst.id);
     setNewInstName(inst.name);
     setSelectedColor(inst.color);
+    setRate(inst.defaultRate ? inst.defaultRate.toString() : '');
+    setRateType(inst.rateType || 'HOURLY');
   };
 
-  const cancelEdit = () => {
+  const resetForm = () => {
     setEditingId(null);
     setNewInstName('');
     setSelectedColor(PRESET_COLORS[0]);
+    setRate('');
+    setRateType('HOURLY');
   };
 
   return (
@@ -109,7 +123,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
             }`}
           >
-            Istituti & Scuole
+            Istituti & Tariffe
           </button>
         </div>
 
@@ -150,7 +164,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
               
               <div className="text-center text-xs text-slate-600 mt-8">
-                Versione App: 1.1.0 • ProfPlanner AI
+                Versione App: 1.2.0 • ProfPlanner AI
               </div>
             </div>
           )}
@@ -160,13 +174,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="space-y-6">
               
               {/* Add/Edit Form */}
-              <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5 space-y-3">
+              <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5 space-y-4">
                  <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
                    {editingId ? <Settings size={16} /> : <Plus size={16} />}
-                   {editingId ? 'Modifica Istituto' : 'Aggiungi Nuovo Istituto'}
+                   {editingId ? 'Modifica Istituto' : 'Configura Nuovo Istituto'}
                  </h3>
                  
-                 <div className="flex flex-col gap-3">
+                 {/* Nome e Colore */}
+                 <div className="space-y-3">
                     <input
                       type="text"
                       className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-purple-500/50 outline-none"
@@ -190,11 +205,50 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         ))}
                       </div>
                     </div>
+                 </div>
 
-                    <div className="flex gap-2 mt-1">
+                 {/* Dati Finanziari */}
+                 <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
+                    <div className="space-y-1">
+                       <label className="text-[10px] text-slate-400 uppercase">Tariffa (€)</label>
+                       <div className="relative">
+                          <input
+                             type="number"
+                             className="w-full bg-slate-900 border border-white/10 rounded-lg pl-8 pr-2 py-2 text-white focus:ring-2 focus:ring-emerald-500/50 outline-none"
+                             placeholder="0.00"
+                             value={rate}
+                             onChange={(e) => setRate(e.target.value)}
+                          />
+                          <Euro size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" />
+                       </div>
+                    </div>
+                    <div className="space-y-1">
+                       <label className="text-[10px] text-slate-400 uppercase">Tipo calcolo</label>
+                       <div className="flex bg-slate-900 rounded-lg p-1 border border-white/10">
+                          <button 
+                             type="button"
+                             onClick={() => setRateType('HOURLY')}
+                             className={`flex-1 flex items-center justify-center py-1 rounded text-xs transition ${rateType === 'HOURLY' ? 'bg-emerald-600 text-white' : 'text-slate-400'}`}
+                             title="Tariffa Oraria"
+                          >
+                             <Clock size={14} />
+                          </button>
+                          <button 
+                             type="button"
+                             onClick={() => setRateType('PER_LESSON')}
+                             className={`flex-1 flex items-center justify-center py-1 rounded text-xs transition ${rateType === 'PER_LESSON' ? 'bg-emerald-600 text-white' : 'text-slate-400'}`}
+                             title="A Lezione"
+                          >
+                             <BookOpen size={14} />
+                          </button>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="flex gap-2 mt-2">
                       {editingId && (
                          <button 
-                           onClick={cancelEdit}
+                           onClick={resetForm}
                            className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-bold rounded-lg transition"
                          >
                            Annulla
@@ -205,10 +259,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         disabled={!newInstName.trim()}
                         className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-900/20"
                       >
-                        {editingId ? 'Aggiorna' : 'Aggiungi'}
+                        {editingId ? 'Aggiorna' : 'Salva'}
                       </button>
-                    </div>
-                 </div>
+                  </div>
               </div>
 
               {/* List */}
@@ -225,23 +278,27 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     className="relative group bg-slate-900 border rounded-xl p-3 flex justify-between items-center transition-all hover:bg-slate-900/80"
                     style={{ 
                       borderColor: inst.color,
-                      boxShadow: `0 0 8px ${inst.color}20`, // Subtle neon glow by default
+                      boxShadow: `0 0 5px ${inst.color}10`,
                     }}
                   >
                      <div className="flex items-center gap-3">
                         <div 
-                          className="w-2 h-8 rounded-full shadow-[0_0_8px_currentColor]" 
+                          className="w-2 h-10 rounded-full shadow-[0_0_8px_currentColor]" 
                           style={{ backgroundColor: inst.color, color: inst.color }}
                         />
-                        <span 
-                          className="font-bold text-lg tracking-wide"
-                          style={{ 
-                            color: inst.color,
-                            textShadow: `0 0 15px ${inst.color}60` // Text neon effect
-                          }}
-                        >
-                          {inst.name}
-                        </span>
+                        <div>
+                           <span 
+                              className="font-bold text-base block"
+                              style={{ color: inst.color }}
+                           >
+                              {inst.name}
+                           </span>
+                           {inst.defaultRate && inst.defaultRate > 0 && (
+                              <span className="text-xs text-emerald-400 font-mono flex items-center gap-1">
+                                 € {inst.defaultRate} <span className="text-slate-500">/ {inst.rateType === 'HOURLY' ? 'ora' : 'lez'}</span>
+                              </span>
+                           )}
+                        </div>
                      </div>
                      
                      <div className="flex gap-2">
