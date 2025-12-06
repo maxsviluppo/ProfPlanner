@@ -14,13 +14,16 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditingTopics, setIsEditingTopics] = useState(false);
   
+  // Animation state for the "bounce" effect
+  const [isAnimating, setIsAnimating] = useState(false);
+  
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [translateX, setTranslateX] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
 
   const isDad = course.modality === 'DAD';
   const isCompleted = course.completed || false;
-  // FORCE BOOLEAN to avoid TS2322 (string | undefined is not boolean)
+  // FORCE BOOLEAN to avoid TS2322
   const hasTopics = !!(course.topics && course.topics.trim().length > 0);
   
   const titleStyle = institute 
@@ -55,7 +58,6 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
 
   // --- Swipe Handlers ---
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
-    // Prevent swipe on inputs/textareas
     if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
     
     setIsSwiping(true);
@@ -97,7 +99,18 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
   };
 
   const handleToggleComplete = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onUpdate({ ...course, completed: e.target.checked });
+    const isChecked = e.target.checked;
+    
+    // Trigger animation
+    setIsAnimating(true);
+    
+    // Perform update
+    onUpdate({ ...course, completed: isChecked });
+
+    // Stop animation after a short delay
+    setTimeout(() => {
+      setIsAnimating(false);
+    }, 400);
   };
 
   const handleTopicsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -114,7 +127,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
   const iconOpacity = Math.min(progress, 1);
 
   return (
-    <div className="relative mb-3 select-none group">
+    <div className={`relative mb-3 select-none group transition-transform duration-300 ${isAnimating ? 'scale-105' : 'scale-100'}`}>
       
       {/* Background Actions Layer */}
       <div className="absolute inset-0 rounded-xl overflow-hidden">
@@ -141,11 +154,11 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
 
       {/* Main Card Layer */}
       <div 
-        className={`relative z-10 backdrop-blur-md border rounded-xl shadow-lg ${bgClass} overflow-hidden will-change-transform`}
+        className={`relative z-10 backdrop-blur-md border rounded-xl shadow-lg ${bgClass} overflow-hidden will-change-transform ${isAnimating && isCompleted ? 'ring-2 ring-emerald-400 bg-emerald-900/60' : ''}`}
         style={{ 
           transform: `translateX(${translateX}px) scale(${scale})`,
           opacity: opacity,
-          transition: isSwiping ? 'none' : 'transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s', 
+          transition: isSwiping ? 'none' : 'transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s, background-color 0.3s, border-color 0.3s', 
           cursor: isSwiping ? 'grabbing' : 'grab'
         }}
         onTouchStart={handleTouchStart}
@@ -181,7 +194,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
              </div>
              
              <div className="flex items-center gap-2">
-                {/* Topic Indicator (Visible when collapsed) */}
+                {/* Topic Indicator */}
                 {hasTopics && !isExpanded && (
                     <div className="text-purple-400 animate-in fade-in" title="Argomenti presenti">
                         <BookOpen size={16} />
@@ -197,7 +210,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
           </div>
 
           <div className="mb-2">
-            <h3 className="text-base sm:text-lg font-bold leading-tight" style={titleStyle}>
+            <h3 className={`text-base sm:text-lg font-bold leading-tight transition-all duration-300 ${isCompleted ? 'opacity-70 decoration-slate-400 decoration-2' : ''}`} style={titleStyle}>
               {course.name}
             </h3>
             
@@ -243,10 +256,10 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
                         checked={isCompleted}
                         onChange={handleToggleComplete}
                         />
-                        <CheckCircle2 size={16} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" />
+                        <CheckCircle2 size={16} className={`absolute text-white pointer-events-none transition-all duration-300 ${isCompleted ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} />
                     </div>
-                    <label htmlFor={`check-${course.id}`} className="text-sm font-medium text-white cursor-pointer select-none">
-                        Lezione Fatta
+                    <label htmlFor={`check-${course.id}`} className={`text-sm font-medium cursor-pointer select-none transition-colors ${isCompleted ? 'text-emerald-400' : 'text-white'}`}>
+                        {isCompleted ? 'Lezione Completata!' : 'Segna come fatta'}
                     </label>
                 </div>
 

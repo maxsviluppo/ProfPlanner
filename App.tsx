@@ -5,21 +5,14 @@ import CourseForm from './components/CourseForm';
 import ImportModal from './components/ImportModal';
 import NotificationModal from './components/NotificationModal';
 import ConflictModal from './components/ConflictModal'; 
+import SettingsModal from './components/SettingsModal'; // New Import
 import CalendarView from './components/CalendarView';
-import StatsOverview from './components/StatsOverview'; // Imported StatsOverview
+import StatsOverview from './components/StatsOverview'; 
 import { db } from './services/db'; 
-import { Plus, Calendar as CalendarIcon, Upload, Briefcase, ChevronLeft, ChevronRight, List, LayoutGrid } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, Upload, Briefcase, ChevronLeft, ChevronRight, List, LayoutGrid, Settings } from 'lucide-react';
 
-const INSTITUTE_COLORS = [
-  '#38bdf8', // Sky Blue
-  '#f472b6', // Pink
-  '#a78bfa', // Purple
-  '#34d399', // Emerald
-  '#fbbf24', // Amber
-  '#f87171', // Red
-  '#a3e635', // Lime
-  '#22d3ee', // Cyan
-];
+// Removed hardcoded colors from here, now managed in SettingsModal / passed via handler
+const DEFAULT_COLOR = '#38bdf8';
 
 const App: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -27,6 +20,7 @@ const App: React.FC = () => {
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false); // Settings State
   
   // Conflict Modal State
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
@@ -36,11 +30,15 @@ const App: React.FC = () => {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [notificationCourses, setNotificationCourses] = useState<Course[]>([]);
   
+  // Notification Settings
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notifiedCourseIds, setNotifiedCourseIds] = useState<Set<string>>(new Set());
+
   // View State
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
   // Filtering state
-  const [selectedDate, setSelectedDate] = useState<string>(''); // empty = no specific day selected
+  const [selectedDate, setSelectedDate] = useState<string>(''); 
   const [viewMonth, setViewMonth] = useState<number>(new Date().getMonth());
   const [viewYear, setViewYear] = useState<number>(new Date().getFullYear());
 
@@ -61,6 +59,14 @@ const App: React.FC = () => {
         setCourses(loadedCourses);
         setInstitutes(loadedInstitutes);
         checkTomorrowCourses(loadedCourses);
+
+        // Load notification preference
+        const notifPref = localStorage.getItem('profplanner_notifications');
+        if (notifPref === 'true') {
+          if (Notification.permission === 'granted') {
+            setNotificationsEnabled(true);
+          }
+        }
 
         // Set default view to today's month/year if we have courses today
         const today = new Date();
@@ -83,12 +89,60 @@ const App: React.FC = () => {
   }, [courses]);
 
   useEffect(() => {
-    if (institutes.length > 0) {
-        db.institutes.saveAll(institutes);
-    }
+    // Always save institutes even if empty (to persist deletions)
+    db.institutes.saveAll(institutes);
   }, [institutes]);
 
-  // Check for next day notifications
+  // --- NOTIFICATION LOGIC (15 MIN REMINDER) ---
+  const toggleNotifications = async () => {
+    if (!notificationsEnabled) {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        setNotificationsEnabled(true);
+        localStorage.setItem('profplanner_notifications', 'true');
+        new Notification("ProfPlanner AI", { body: "Notifiche attivate! Ti avviserò 15 minuti prima delle lezioni." });
+      } else {
+        alert("Devi concedere i permessi per ricevere le notifiche.");
+      }
+    } else {
+      setNotificationsEnabled(false);
+      localStorage.setItem('profplanner_notifications', 'false');
+    }
+  };
+
+  useEffect(() => {
+    if (!notificationsEnabled) return;
+
+    const intervalId = setInterval(() => {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const todayStr = now.toISOString().split('T')[0];
+
+      courses.forEach(course => {
+        // Check if course is today and not completed
+        if (course.date === todayStr && !course.completed) {
+           const [h, m] = course.startTime.split(':').map(Number);
+           const courseStartMinutes = h * 60 + m;
+           const diff = courseStartMinutes - currentMinutes;
+
+           // Trigger if exactly 15 minutes before
+           if (diff === 15 && !notifiedCourseIds.has(course.id)) {
+             new Notification(`Lezione tra 15 min: ${course.name}`, {
+               body: `Orario: ${course.startTime} - ${course.modality === 'DAD' ? 'Online' : 'In Sede'}`,
+               icon: '/vite.svg' 
+             });
+             
+             setNotifiedCourseIds(prev => new Set(prev).add(course.id));
+           }
+        }
+      });
+    }, 60000); 
+
+    return () => clearInterval(intervalId);
+  }, [notificationsEnabled, courses, notifiedCourseIds]);
+
+
+  // Check for next day notifications (Modal)
   const checkTomorrowCourses = (currentCourses: Course[]) => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -100,7 +154,7 @@ const App: React.FC = () => {
     }
   };
 
-  // --- HELPER FUNCTIONS FOR CONFLICT DETECTION ---
+  // --- HELPER FUNCTIONS ---
   
   const toMinutes = (time: string): number => {
     if (!time) return 0;
@@ -119,7 +173,7 @@ const App: React.FC = () => {
     return (s1 < e2 && e1 > s2);
   };
 
-  // --- UNIFIED SAVE LOGIC ---
+  // --- SAVE & CONFLICT LOGIC ---
 
   const executeSave = (newCoursesData: Course[]) => {
     if (editingCourse && newCoursesData.length === 1) {
@@ -199,15 +253,31 @@ const App: React.FC = () => {
     setIsFormOpen(true);
   };
 
-  const handleAddInstitute = (name: string): Institute => {
+  // --- INSTITUTE MANAGEMENT ---
+
+  const handleAddInstitute = (name: string, color?: string): Institute => {
     const newInst: Institute = {
       id: Date.now().toString() + Math.random(),
       name,
-      color: INSTITUTE_COLORS[institutes.length % INSTITUTE_COLORS.length]
+      color: color || DEFAULT_COLOR
     };
-    setInstitutes([...institutes, newInst]);
+    setInstitutes(prev => [...prev, newInst]);
     return newInst;
   };
+
+  const handleUpdateInstitute = (updatedInst: Institute) => {
+    setInstitutes(prev => prev.map(i => i.id === updatedInst.id ? updatedInst : i));
+  };
+
+  const handleDeleteInstitute = (id: string) => {
+    if (window.confirm("Eliminare questo istituto? Le lezioni associate perderanno il riferimento.")) {
+      setInstitutes(prev => prev.filter(i => i.id !== id));
+    }
+  };
+
+  const getInstitute = (id?: string) => institutes.find(i => i.id === id);
+
+  // --- Filtering Logic ---
 
   const handleDateSelection = (date: string) => {
     if (date === selectedDate) {
@@ -220,11 +290,6 @@ const App: React.FC = () => {
     }
   };
 
-  const getInstitute = (id?: string) => institutes.find(i => i.id === id);
-
-  // --- Filtering Logic ---
-
-  // Get dates that have courses within the selected Month/Year
   const getDaysInMonthWithCourses = () => {
     const dates = new Set<string>();
     courses.forEach(c => {
@@ -245,7 +310,6 @@ const App: React.FC = () => {
 
   const filteredCourses = getCoursesInViewMonth()
     .filter(c => {
-      // Filter by specific date if selected
       if (selectedDate && c.date !== selectedDate) return false;
       return true;
     })
@@ -266,7 +330,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen font-sans text-white">
       
-      {/* FIXED Background Gradient Orbs */}
+      {/* Background */}
       <div className="fixed inset-0 w-full h-full overflow-hidden bg-slate-900 z-[-1]">
          <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"></div>
          <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-purple-900/20 rounded-full blur-[120px] animate-pulse" style={{animationDuration: '8s'}} />
@@ -293,6 +357,15 @@ const App: React.FC = () => {
              </div>
 
             <div className="flex gap-2">
+                
+                <button 
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="p-2 sm:px-3 sm:py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition flex items-center gap-2 text-sm font-medium backdrop-blur-md"
+                  title="Impostazioni"
+                >
+                  <Settings size={18} className="text-slate-300" />
+                </button>
+
                 <button 
                   onClick={() => setIsImportOpen(true)}
                   className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition flex items-center gap-2 text-sm font-medium backdrop-blur-md"
@@ -464,7 +537,7 @@ const App: React.FC = () => {
         onSubmit={handleAddCourses}
         initialData={editingCourse}
         institutes={institutes}
-        onAddInstitute={handleAddInstitute}
+        onAddInstitute={handleAddInstitute} // Uses the wrapped function
         preselectedDate={selectedDate || undefined}
       />
 
@@ -483,6 +556,18 @@ const App: React.FC = () => {
         }}
         onConfirm={handleConfirmConflict}
         conflicts={conflictMessages}
+      />
+      
+      {/* Settings Modal */}
+      <SettingsModal 
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        notificationsEnabled={notificationsEnabled}
+        onToggleNotifications={toggleNotifications}
+        institutes={institutes}
+        onAddInstitute={handleAddInstitute}
+        onUpdateInstitute={handleUpdateInstitute}
+        onDeleteInstitute={handleDeleteInstitute}
       />
 
       {notificationCourses.length > 0 && (
