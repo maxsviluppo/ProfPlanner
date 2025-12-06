@@ -9,7 +9,7 @@ import SettingsModal from './components/SettingsModal';
 import CalendarView from './components/CalendarView';
 import StatsOverview from './components/StatsOverview'; 
 import { db } from './services/db'; 
-import { Plus, Upload, Briefcase, ChevronLeft, ChevronRight, List, LayoutGrid, Settings } from 'lucide-react';
+import { Plus, Upload, Briefcase, ChevronLeft, ChevronRight, List, LayoutGrid, Settings, Filter } from 'lucide-react';
 
 const DEFAULT_COLOR = '#38bdf8';
 
@@ -35,6 +35,7 @@ const App: React.FC = () => {
   // View State
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [selectedInstituteFilter, setSelectedInstituteFilter] = useState<string>(''); // Empty = ALL
+  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>(''); // Empty = ALL (New Filter)
 
   // Filtering state
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]); 
@@ -46,6 +47,9 @@ const App: React.FC = () => {
   // Current Date for Header
   const todayFormatted = new Date().toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
   
+  // Extract unique subjects for the filter dropdown
+  const uniqueSubjects = Array.from(new Set(courses.map(c => c.name))).sort();
+
   const checkTomorrowCourses = (currentCourses: Course[]) => {
      const tomorrow = new Date();
      tomorrow.setDate(tomorrow.getDate() + 1);
@@ -97,14 +101,15 @@ const App: React.FC = () => {
 
   // Save on change (Async to DB)
   useEffect(() => {
-    if (courses.length > 0 || institutes.length > 0) { 
-         db.courses.saveAll(courses);
-    }
+    // Only save if we have data or explicit empty state, handled by setters
+    if (courses.length > 0) db.courses.saveAll(courses);
+    // Note: If courses is empty array [], we might want to save it too (deletion), 
+    // but the initial load might trigger this with [].
+    // The handleResetAll function manually clears storage.
   }, [courses]);
 
   useEffect(() => {
-    // Always save institutes even if empty (to persist deletions)
-    db.institutes.saveAll(institutes);
+    if (institutes.length > 0) db.institutes.saveAll(institutes);
   }, [institutes]);
 
   // --- HANDLERS ---
@@ -124,6 +129,15 @@ const App: React.FC = () => {
         setNotificationsEnabled(false);
         localStorage.setItem('profplanner_notifications', 'false');
      }
+  };
+
+  const handleResetAllData = async () => {
+      setCourses([]);
+      setInstitutes([]);
+      await db.courses.saveAll([]);
+      await db.institutes.saveAll([]);
+      setIsSettingsOpen(false);
+      alert("Tutti i dati sono stati eliminati.");
   };
 
   const handleAddInstitute = (name: string, color: string, rate?: number, rateType?: 'HOURLY' | 'PER_LESSON') => {
@@ -146,8 +160,10 @@ const App: React.FC = () => {
 
   const handleDeleteInstitute = (id: string) => {
     if (window.confirm("Eliminare questo istituto? Le lezioni associate perderanno il riferimento.")) {
-        setInstitutes(institutes.filter(i => i.id !== id));
+        const newInstitutes = institutes.filter(i => i.id !== id);
+        setInstitutes(newInstitutes);
         setCourses(courses.map(c => c.instituteId === id ? { ...c, instituteId: undefined } : c));
+        db.institutes.saveAll(newInstitutes); // Force save immediately
     }
   };
 
@@ -188,18 +204,16 @@ const App: React.FC = () => {
   };
 
   const processSave = (newCourses: Course[]) => {
+      let updatedList;
       if (editingCourse) {
-          // Edit mode: Remove old version of the edited course, then add new ones
-          // Note: If the form returned multiple sessions (dates), we treat them as separate courses
-          // The edited course ID is reused if the form preserves it, but CourseForm generates new IDs for new sessions.
-          // Usually in Edit mode for 1 course, we just update that course.
-          
           const otherCourses = courses.filter(c => c.id !== editingCourse.id);
-          setCourses([...otherCourses, ...newCourses]);
-          setEditingCourse(null);
+          updatedList = [...otherCourses, ...newCourses];
       } else {
-          setCourses([...courses, ...newCourses]);
+          updatedList = [...courses, ...newCourses];
       }
+      setCourses(updatedList);
+      db.courses.saveAll(updatedList); // Force save
+      setEditingCourse(null);
       setIsFormOpen(false);
   };
 
@@ -210,19 +224,23 @@ const App: React.FC = () => {
   };
 
   const handleImport = (importedCourses: Course[]) => {
-      // Simple import without conflict check blocking (or we could add it)
-      // For now, just append
-      setCourses([...courses, ...importedCourses]);
+      const updatedList = [...courses, ...importedCourses];
+      setCourses(updatedList);
+      db.courses.saveAll(updatedList);
   };
 
   const handleDeleteCourse = (id: string) => {
       if (window.confirm("Eliminare questa lezione?")) {
-          setCourses(courses.filter(c => c.id !== id));
+          const updatedList = courses.filter(c => c.id !== id);
+          setCourses(updatedList);
+          db.courses.saveAll(updatedList);
       }
   };
 
   const handleUpdateCourse = (updated: Course) => {
-      setCourses(courses.map(c => c.id === updated.id ? updated : c));
+      const updatedList = courses.map(c => c.id === updated.id ? updated : c);
+      setCourses(updatedList);
+      db.courses.saveAll(updatedList);
   };
 
   const handleEditCourse = (course: Course) => {
@@ -234,8 +252,13 @@ const App: React.FC = () => {
 
   const getFilteredCourses = () => {
       let filtered = courses;
+      // Filter by Institute
       if (selectedInstituteFilter) {
           filtered = filtered.filter(c => c.instituteId === selectedInstituteFilter);
+      }
+      // Filter by Subject (Course Name)
+      if (selectedSubjectFilter) {
+          filtered = filtered.filter(c => c.name === selectedSubjectFilter);
       }
       return filtered;
   };
@@ -304,8 +327,6 @@ const App: React.FC = () => {
       }
 
       // LIST VIEW
-      // Group by date, sorted ascending (future first?) or all?
-      // Let's sort by date descending or ascending. Usually upcoming first.
       const sorted = [...filtered].sort((a, b) => {
           if (a.date !== b.date) return a.date.localeCompare(b.date);
           return a.startTime.localeCompare(b.startTime);
@@ -321,17 +342,17 @@ const App: React.FC = () => {
       const dates = Object.keys(groups).sort();
 
       return (
-          <div className="space-y-6 pb-20" ref={listRef}>
+          <div className="space-y-4 pb-20" ref={listRef}>
               {dates.length === 0 && (
                    <div className="text-center py-12 flex flex-col items-center opacity-50">
                        <Briefcase size={48} className="mb-4 text-slate-500" />
                        <p className="text-slate-400">Nessuna lezione trovata.</p>
-                       <p className="text-slate-600 text-sm">Aggiungi un corso o importa un calendario.</p>
+                       <p className="text-slate-600 text-sm">Modifica i filtri o aggiungi un corso.</p>
                    </div>
               )}
               {dates.map(date => (
                   <div key={date}>
-                      <div className="sticky top-0 z-20 bg-slate-900/95 backdrop-blur py-2 mb-2 border-b border-white/5 flex items-center gap-2">
+                      <div className="sticky top-0 z-20 bg-slate-900/95 backdrop-blur py-2 mb-2 border-b border-white/5 flex items-center gap-2 shadow-sm">
                           <div className={`w-2 h-2 rounded-full ${date === new Date().toISOString().split('T')[0] ? 'bg-purple-500' : 'bg-slate-600'}`} />
                           <h3 className={`text-sm font-bold uppercase tracking-wider ${date === new Date().toISOString().split('T')[0] ? 'text-purple-400' : 'text-slate-400'}`}>
                               {new Date(date).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -389,49 +410,75 @@ const App: React.FC = () => {
                 selectedInstituteId={selectedInstituteFilter}
              />
 
-             <div className="flex gap-3 mb-6 overflow-x-auto pb-2 no-scrollbar">
-                  <div className="flex bg-slate-900 p-1 rounded-xl border border-white/10 shrink-0">
-                      <button 
-                        onClick={() => setViewMode('list')}
-                        className={`p-2 rounded-lg transition ${viewMode === 'list' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
-                      >
-                          <List size={20} />
-                      </button>
-                      <button 
-                        onClick={() => setViewMode('calendar')}
-                        className={`p-2 rounded-lg transition ${viewMode === 'calendar' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
-                      >
-                          <LayoutGrid size={20} />
-                      </button>
-                  </div>
+             {/* CONTROLS ROW: View Toggle + Subject Filter */}
+             <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                 
+                 <div className="flex gap-2 w-full sm:w-auto">
+                    {/* View Switch */}
+                    <div className="flex bg-slate-900 p-1 rounded-xl border border-white/10 shrink-0">
+                        <button 
+                            onClick={() => setViewMode('list')}
+                            className={`p-2 rounded-lg transition ${viewMode === 'list' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            <List size={20} />
+                        </button>
+                        <button 
+                            onClick={() => setViewMode('calendar')}
+                            className={`p-2 rounded-lg transition ${viewMode === 'calendar' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            <LayoutGrid size={20} />
+                        </button>
+                    </div>
 
-                  {/* Institute Filter Chips */}
-                  <div className="flex gap-2 items-center">
+                    {/* Subject Filter Dropdown */}
+                    <div className="relative flex-1 sm:flex-none">
+                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-500">
+                            <Filter size={14} />
+                        </div>
+                        <select
+                            value={selectedSubjectFilter}
+                            onChange={(e) => setSelectedSubjectFilter(e.target.value)}
+                            className="w-full sm:w-48 appearance-none bg-slate-900 border border-white/10 text-slate-200 text-sm rounded-xl py-2.5 pl-9 pr-8 focus:ring-1 focus:ring-purple-500 outline-none"
+                        >
+                            <option value="">Tutte le materie</option>
+                            {uniqueSubjects.map(subj => (
+                                <option key={subj} value={subj}>{subj}</option>
+                            ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-500">
+                           <ChevronLeft size={12} className="-rotate-90" />
+                        </div>
+                    </div>
+                 </div>
+
+             </div>
+
+             {/* Institute Chips (Scrollable) */}
+             <div className="flex gap-2 mb-6 overflow-x-auto pb-2 no-scrollbar">
+                  <button
+                    onClick={() => setSelectedInstituteFilter('')}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition border whitespace-nowrap ${
+                        selectedInstituteFilter === '' 
+                        ? 'bg-white text-slate-900 border-white' 
+                        : 'bg-slate-900 text-slate-400 border-white/10 hover:border-white/30'
+                    }`}
+                  >
+                      Tutte le scuole
+                  </button>
+                  {institutes.map(inst => (
                       <button
-                        onClick={() => setSelectedInstituteFilter('')}
-                        className={`px-3 py-2 rounded-xl text-xs font-bold transition border whitespace-nowrap ${
-                            selectedInstituteFilter === '' 
-                            ? 'bg-white text-slate-900 border-white' 
-                            : 'bg-slate-900 text-slate-400 border-white/10 hover:border-white/30'
-                        }`}
+                        key={inst.id}
+                        onClick={() => setSelectedInstituteFilter(inst.id === selectedInstituteFilter ? '' : inst.id)}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold transition border whitespace-nowrap flex items-center gap-2`}
+                        style={{ 
+                            backgroundColor: selectedInstituteFilter === inst.id ? inst.color : 'transparent',
+                            color: selectedInstituteFilter === inst.id ? '#0f172a' : inst.color,
+                            borderColor: inst.color
+                        }}
                       >
-                          Tutti
+                         {inst.name}
                       </button>
-                      {institutes.map(inst => (
-                          <button
-                            key={inst.id}
-                            onClick={() => setSelectedInstituteFilter(inst.id === selectedInstituteFilter ? '' : inst.id)}
-                            className={`px-3 py-2 rounded-xl text-xs font-bold transition border whitespace-nowrap flex items-center gap-2`}
-                            style={{ 
-                                backgroundColor: selectedInstituteFilter === inst.id ? inst.color : 'transparent',
-                                color: selectedInstituteFilter === inst.id ? '#0f172a' : inst.color,
-                                borderColor: inst.color
-                            }}
-                          >
-                             {inst.name}
-                          </button>
-                      ))}
-                  </div>
+                  ))}
              </div>
 
              {/* Content Area */}
@@ -495,6 +542,7 @@ const App: React.FC = () => {
             onAddInstitute={handleAddInstitute}
             onUpdateInstitute={handleUpdateInstitute}
             onDeleteInstitute={handleDeleteInstitute}
+            onResetAll={handleResetAllData}
         />
 
     </div>

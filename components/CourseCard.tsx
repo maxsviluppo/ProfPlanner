@@ -135,7 +135,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
   const iconOpacity = Math.min(progress, 1);
 
   return (
-    <div className={`relative mb-4 select-none group transition-transform duration-300 ${isAnimating ? 'scale-[1.02]' : 'scale-100'}`}>
+    <div className={`relative mb-2 select-none group transition-transform duration-300 ${isAnimating ? 'scale-[1.02]' : 'scale-100'}`}>
       
       {/* Background Actions Layer */}
       <div className="absolute inset-0 rounded-2xl overflow-hidden">
@@ -185,93 +185,84 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
           style={{ backgroundColor: isCompleted ? '#10b981' : instituteColor }} 
         />
 
-        <div className="p-5 pl-6">
+        {/* Compact Padding: p-3 instead of p-5 */}
+        <div className="p-3 pl-5">
           
           {/* TOP ROW: Modality (Left) | Time of Day (Right) */}
-          <div className="flex justify-between items-start mb-2">
-             {/* Top Left: Aula/Dad */}
-             <div className="flex flex-col items-start gap-1">
-                {isDad ? (
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-[10px] font-extrabold text-blue-300 uppercase tracking-widest shadow-sm">
+          <div className="flex justify-between items-start mb-1">
+             <div className="flex items-center gap-2">
+                 {isDad ? (
+                  <span className="text-[10px] font-extrabold text-blue-300 uppercase tracking-widest flex items-center gap-1">
                      <Laptop size={10} /> DAD
-                  </div>
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-extrabold text-emerald-300 uppercase tracking-widest shadow-sm">
+                  <span className="text-[10px] font-extrabold text-emerald-300 uppercase tracking-widest flex items-center gap-1">
                      <MapPin size={10} /> PRESENZA
-                  </div>
+                  </span>
+                )}
+                
+                {institute && (
+                    <div className="flex items-center gap-1">
+                        <span className="text-slate-600">|</span>
+                        <Building2 size={10} style={{ color: instituteColor }}/>
+                        <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{institute.name}</span>
+                    </div>
                 )}
              </div>
 
-             {/* Top Right: Mattina/Pomeriggio */}
-             <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-extrabold uppercase tracking-widest shadow-sm ${
-                isMorning 
-                  ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' 
-                  : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300'
-             }`}>
+             <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
                 {isMorning ? <Sun size={10} /> : <Moon size={10} />}
                 {timeOfDayLabel}
              </div>
           </div>
 
           {/* MIDDLE ROW: Name (Big Left) | Time (Right) */}
-          <div className="flex items-end justify-between gap-4 mb-4">
+          <div className="flex items-center justify-between gap-3">
              <div className="flex-1 min-w-0">
-                {/* INCREASED FONT SIZE: text-3xl sm:text-4xl */}
-                <h3 className={`text-3xl sm:text-4xl font-black leading-none tracking-tight truncate pr-2 mt-1 ${
+                {/* KEEPING FONT SIZE LARGE but reducing line height */}
+                <h3 className={`text-3xl sm:text-4xl font-black leading-none tracking-tight truncate pr-1 -ml-0.5 ${
                     isCompleted 
                     ? 'text-slate-500 line-through decoration-emerald-500/50 decoration-2' 
-                    : 'bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent'
+                    : 'bg-gradient-to-br from-white to-slate-400 bg-clip-text text-transparent'
                 }`}>
                   {course.name}
                 </h3>
-                
-                {/* Institute / Code Subtitle */}
-                <div className="flex items-center gap-2 mt-2">
-                    {institute && (
-                        /* INCREASED FONT SIZE: text-sm sm:text-base */
-                        <div className="flex items-center gap-1.5 text-sm sm:text-base font-extrabold text-slate-400">
-                            <Building2 size={14} style={{ color: instituteColor }}/>
-                            <span className="uppercase tracking-wide opacity-90">{institute.name}</span>
-                        </div>
-                    )}
-                    {course.code && (
-                        <span className="text-[10px] font-mono text-slate-600 border border-slate-700 px-1 rounded">
-                            {course.code}
-                        </span>
-                    )}
-                </div>
              </div>
 
-             <div className={`text-right shrink-0 flex flex-col items-end ${isCompleted ? 'opacity-50' : 'opacity-100'}`}>
-                <div className="flex items-center gap-1.5 text-lg font-bold font-mono text-slate-200">
+             <div className={`text-right shrink-0 leading-none ${isCompleted ? 'opacity-50' : 'opacity-100'}`}>
+                <div className="text-lg font-bold font-mono text-slate-200">
                    {course.startTime} 
                 </div>
-                <div className="text-xs text-slate-500 font-medium">
+                <div className="text-[10px] text-slate-500 font-medium">
                    {course.endTime}
                 </div>
              </div>
           </div>
 
-          {/* BOTTOM ROW: Topics Preview */}
-          <div className="flex items-end justify-between">
-             <div className="flex-1">
-                {hasTopics && !isExpanded && (
-                    <div className="mt-1 relative pl-3 border-l-2 border-slate-700/50">
-                        <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
-                            <span className="text-slate-500 font-bold mr-1 uppercase text-[10px] tracking-wide">Argomenti fatti:</span>
-                            {course.topics}
-                        </p>
-                    </div>
+          {/* BOTTOM ROW: Topics Preview or Code */}
+          <div className="flex items-center justify-between mt-1">
+             <div className="flex-1 overflow-hidden h-4">
+                {hasTopics ? (
+                     <p className="text-[10px] text-slate-400 truncate flex items-center gap-1">
+                         <StickyNote size={10} className="text-purple-400"/>
+                         {course.topics}
+                     </p>
+                ) : (
+                    course.code ? (
+                         <span className="text-[10px] font-mono text-slate-600 border border-slate-700 px-1 rounded inline-block">
+                            {course.code}
+                         </span>
+                    ) : null
                 )}
              </div>
 
              {/* Expand Arrow */}
-             <div className="pl-2">
+             <div className="pl-2 -mt-1">
                 <button 
                     onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
-                    className="text-slate-600 hover:text-white transition p-1.5 rounded-full hover:bg-white/5"
+                    className="text-slate-600 hover:text-white transition p-1 rounded-full hover:bg-white/5"
                 >
-                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </button>
              </div>
           </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Institute } from '../types';
-import { X, Bell, BellOff, Plus, Trash2, Settings, Euro, Clock, Edit2 } from 'lucide-react';
+import { X, Bell, BellOff, Plus, Trash2, Settings, Euro, Clock, Edit2, AlertTriangle } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -11,6 +11,7 @@ interface SettingsModalProps {
   onAddInstitute: (name: string, color: string, rate?: number, rateType?: 'HOURLY' | 'PER_LESSON') => void;
   onUpdateInstitute: (institute: Institute) => void;
   onDeleteInstitute: (id: string) => void;
+  onResetAll: () => void; // New Prop
 }
 
 const PRESET_COLORS = [
@@ -33,7 +34,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   institutes,
   onAddInstitute,
   onUpdateInstitute,
-  onDeleteInstitute
+  onDeleteInstitute,
+  onResetAll
 }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'institutes'>('general');
   
@@ -86,6 +88,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     setSelectedColor(PRESET_COLORS[0]);
     setRate('');
     setRateType('HOURLY');
+  };
+
+  const confirmReset = () => {
+      if (window.confirm("ATTENZIONE: Stai per eliminare TUTTI i corsi e gli istituti salvati. L'azione è irreversibile. Sei sicuro?")) {
+          onResetAll();
+      }
   };
 
   return (
@@ -144,6 +152,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                    </button>
                 </div>
                 
+                {/* Danger Zone */}
+                <div className="bg-red-500/10 p-4 rounded-xl border border-red-500/20 space-y-3">
+                    <div className="flex items-center gap-2 text-red-400 mb-1">
+                        <AlertTriangle size={18} />
+                        <h3 className="font-bold text-sm uppercase tracking-wider">Zona Pericolo</h3>
+                    </div>
+                    <p className="text-xs text-slate-400">
+                        Elimina permanentemente tutti i corsi, gli istituti e i dati salvati. Questa azione non può essere annullata.
+                    </p>
+                    <button 
+                        onClick={confirmReset}
+                        className="w-full py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg transition text-sm flex items-center justify-center gap-2"
+                    >
+                        <Trash2 size={16} />
+                        Elimina tutto e Resetta
+                    </button>
+                </div>
+
                 <div className="text-center p-4">
                   <p className="text-xs text-slate-500">Versione 1.0.0 • ProfPlanner</p>
                 </div>
