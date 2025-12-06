@@ -33,7 +33,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
   const isMorning = startHour < 14;
   const timeOfDayLabel = isMorning ? 'MATTINA' : 'POMERIGGIO';
 
-  const swipeThreshold = 85;
+  // INCREASED THRESHOLD: Was 85, now 175 to make it less sensitive
+  const swipeThreshold = 175;
 
   // --- Linkify Helper ---
   const renderTextWithLinks = (text: string) => {
@@ -75,7 +76,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
     const diff = clientX - touchStart;
     
     // Add resistance (damping) as you swipe further
-    const dampedDiff = diff / (1 + Math.abs(diff) / 400);
+    const dampedDiff = diff / (1 + Math.abs(diff) / 600);
     setTranslateX(dampedDiff);
   };
 
@@ -140,9 +141,9 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
       <div className="absolute inset-0 rounded-2xl overflow-hidden">
         <div 
             className="absolute inset-y-0 left-0 w-full bg-blue-600/90 flex items-center pl-8 transition-opacity duration-200"
-            style={{ opacity: translateX > 0 ? 1 : 0 }}
+            style={{ opacity: translateX > 0 ? iconOpacity : 0 }}
         >
-           <div style={{ transform: `scale(${iconScale})`, opacity: iconOpacity }} className="flex items-center gap-3 text-white font-bold transition-transform duration-100 will-change-transform">
+           <div style={{ transform: `scale(${iconScale})` }} className="flex items-center gap-3 text-white font-bold transition-transform duration-100 will-change-transform">
                <Edit2 size={28} />
                <span className="text-lg tracking-wider">MODIFICA</span>
            </div>
@@ -150,9 +151,9 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
 
         <div 
             className="absolute inset-y-0 right-0 w-full bg-red-600/90 flex items-center justify-end pr-8 transition-opacity duration-200"
-            style={{ opacity: translateX < 0 ? 1 : 0 }}
+            style={{ opacity: translateX < 0 ? iconOpacity : 0 }}
         >
-           <div style={{ transform: `scale(${iconScale})`, opacity: iconOpacity }} className="flex items-center gap-3 text-white font-bold transition-transform duration-100 will-change-transform">
+           <div style={{ transform: `scale(${iconScale})` }} className="flex items-center gap-3 text-white font-bold transition-transform duration-100 will-change-transform">
                <span className="text-lg tracking-wider">ELIMINA</span>
                <Trash2 size={28} />
            </div>
@@ -192,11 +193,11 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
              <div className="flex flex-col items-start gap-1">
                 {isDad ? (
                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-[10px] font-extrabold text-blue-300 uppercase tracking-widest shadow-sm">
-                     <Laptop size={10} /> Online
+                     <Laptop size={10} /> DAD
                   </div>
                 ) : (
                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-extrabold text-emerald-300 uppercase tracking-widest shadow-sm">
-                     <MapPin size={10} /> Aula
+                     <MapPin size={10} /> PRESENZA
                   </div>
                 )}
              </div>
@@ -215,7 +216,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
           {/* MIDDLE ROW: Name (Big Left) | Time (Right) */}
           <div className="flex items-end justify-between gap-4 mb-4">
              <div className="flex-1 min-w-0">
-                <h3 className={`text-2xl sm:text-3xl font-black leading-tight tracking-tight truncate pr-2 ${
+                {/* INCREASED FONT SIZE: text-3xl sm:text-4xl */}
+                <h3 className={`text-3xl sm:text-4xl font-black leading-none tracking-tight truncate pr-2 mt-1 ${
                     isCompleted 
                     ? 'text-slate-500 line-through decoration-emerald-500/50 decoration-2' 
                     : 'bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent'
@@ -224,11 +226,12 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
                 </h3>
                 
                 {/* Institute / Code Subtitle */}
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-2 mt-2">
                     {institute && (
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
-                            <Building2 size={12} style={{ color: instituteColor }}/>
-                            <span className="uppercase tracking-wide opacity-80">{institute.name}</span>
+                        /* INCREASED FONT SIZE: text-sm sm:text-base */
+                        <div className="flex items-center gap-1.5 text-sm sm:text-base font-extrabold text-slate-400">
+                            <Building2 size={14} style={{ color: instituteColor }}/>
+                            <span className="uppercase tracking-wide opacity-90">{institute.name}</span>
                         </div>
                     )}
                     {course.code && (
