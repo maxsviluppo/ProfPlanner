@@ -9,7 +9,7 @@ import SettingsModal from './components/SettingsModal';
 import CalendarView from './components/CalendarView';
 import StatsOverview from './components/StatsOverview'; 
 import { db } from './services/db'; 
-import { Plus, Upload, Briefcase, ChevronLeft, ChevronRight, List, LayoutGrid, Settings, Filter } from 'lucide-react';
+import { Plus, Upload, Briefcase, ChevronLeft, ChevronRight, List, LayoutGrid, Settings, Filter, CalendarDays } from 'lucide-react';
 
 const DEFAULT_COLOR = '#38bdf8';
 
@@ -350,11 +350,18 @@ const App: React.FC = () => {
                        <p className="text-slate-600 text-sm">Modifica i filtri o aggiungi un corso.</p>
                    </div>
               )}
-              {dates.map(date => (
+              {dates.map(date => {
+                  const isToday = date === new Date().toISOString().split('T')[0];
+                  return (
                   <div key={date}>
-                      <div className="sticky top-0 z-20 bg-slate-900/95 backdrop-blur py-2 mb-2 border-b border-white/5 flex items-center gap-2 shadow-sm">
-                          <div className={`w-2 h-2 rounded-full ${date === new Date().toISOString().split('T')[0] ? 'bg-purple-500' : 'bg-slate-600'}`} />
-                          <h3 className={`text-sm font-bold uppercase tracking-wider ${date === new Date().toISOString().split('T')[0] ? 'text-purple-400' : 'text-slate-400'}`}>
+                      {/* Highlighted Day Header */}
+                      <div className={`sticky top-0 z-20 backdrop-blur-md py-3 px-3 mb-2 border-b border-l-4 flex items-center gap-3 shadow-md rounded-r-xl transition-colors ${
+                          isToday 
+                          ? 'bg-purple-800/90 border-b-purple-400/50 border-l-purple-400' 
+                          : 'bg-slate-700/90 border-b-white/20 border-l-slate-300'
+                      }`}>
+                          <CalendarDays size={20} className={isToday ? 'text-white' : 'text-slate-200'} />
+                          <h3 className={`text-lg font-bold capitalize tracking-wide text-white`}>
                               {new Date(date).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}
                           </h3>
                       </div>
@@ -371,7 +378,8 @@ const App: React.FC = () => {
                           ))}
                       </div>
                   </div>
-              ))}
+                  );
+              })}
           </div>
       );
   };

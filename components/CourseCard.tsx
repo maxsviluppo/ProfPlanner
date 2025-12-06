@@ -48,7 +48,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
   const isMorning = startHour < 14;
   const timeOfDayLabel = isMorning ? 'MATTINA' : 'POMERIGGIO';
 
-  const swipeThreshold = 80;
+  // LOWERED THRESHOLD: Was 80, now 60 for easier deletion
+  const swipeThreshold = 60;
 
   // Sync local state when course updates from outside (unless we are editing)
   useEffect(() => {
@@ -127,6 +128,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
 
   // --- Swipe Handlers ---
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
+    // Prevent swipe on inputs
     if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
     
     setIsSwiping(true);
@@ -138,6 +140,11 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
     if (!isSwiping || touchStart === null) return;
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
     const diff = clientX - touchStart;
+    
+    // Ignore small movements to prevent accidental swipes during scroll
+    if (Math.abs(diff) < 5) return;
+
+    // Add resistance (damping) as you swipe further
     const dampedDiff = diff / (1 + Math.abs(diff) / 600);
     setTranslateX(dampedDiff);
   };
@@ -152,11 +159,16 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
 
     if (absX > swipeThreshold) {
       if (translateX > 0) {
+        // Edit Mode (Swipe Right)
         setTranslateX(0); 
         onEdit(course);
       } else {
+        // Delete Mode (Swipe Left)
         setTranslateX(0); 
-        setTimeout(() => onDelete(course.id), 50); 
+        // Use requestAnimationFrame to ensure state update renders before alert blocks UI
+        requestAnimationFrame(() => {
+           setTimeout(() => onDelete(course.id), 50); 
+        });
       }
     } else {
       setTranslateX(0);

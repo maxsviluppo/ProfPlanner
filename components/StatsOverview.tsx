@@ -26,6 +26,9 @@ const StatsOverview: React.FC<StatsOverviewProps> = ({
         // HOURLY
         const [startH, startM] = course.startTime.split(':').map(Number);
         const [endH, endM] = course.endTime.split(':').map(Number);
+        
+        if (isNaN(startH) || isNaN(endH)) return 0;
+
         const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
         const durationHours = durationMinutes / 60;
         return durationHours * inst.defaultRate;
@@ -39,9 +42,17 @@ const StatsOverview: React.FC<StatsOverviewProps> = ({
     };
 
     // 1. Current Month Stats
+    // FIX: Parse date string directly "YYYY-MM-DD" to avoid timezone shifts with new Date()
     const monthCourses = courses.filter(c => {
-       const d = new Date(c.date);
-       return d.getMonth() === viewMonth && d.getFullYear() === viewYear && filterFn(c);
+       if (!c.date) return false;
+       const parts = c.date.split('-'); // ["2023", "10", "25"]
+       if (parts.length !== 3) return false;
+       
+       const y = parseInt(parts[0], 10);
+       const m = parseInt(parts[1], 10); // 1-12
+       
+       // viewMonth is 0-11, so we compare m-1
+       return (m - 1) === viewMonth && y === viewYear && filterFn(c);
     });
 
     let monthMinutes = 0;
@@ -50,14 +61,22 @@ const StatsOverview: React.FC<StatsOverviewProps> = ({
     monthCourses.forEach(c => {
        const [startH, startM] = c.startTime.split(':').map(Number);
        const [endH, endM] = c.endTime.split(':').map(Number);
-       monthMinutes += ((endH * 60 + endM) - (startH * 60 + startM));
+       
+       if (!isNaN(startH) && !isNaN(endH)) {
+           const diff = (endH * 60 + endM) - (startH * 60 + startM);
+           if (diff > 0) monthMinutes += diff;
+       }
        monthEarnings += calculateEarnings(c);
     });
 
     // 2. Year Stats
     const yearCourses = courses.filter(c => {
-       const d = new Date(c.date);
-       return d.getFullYear() === viewYear && filterFn(c);
+       if (!c.date) return false;
+       const parts = c.date.split('-');
+       if (parts.length !== 3) return false;
+       
+       const y = parseInt(parts[0], 10);
+       return y === viewYear && filterFn(c);
     });
 
     let yearEarnings = 0;
