@@ -8,9 +8,10 @@ import ConflictModal from './components/ConflictModal';
 import SettingsModal from './components/SettingsModal'; 
 import CalendarView from './components/CalendarView';
 import StatsOverview from './components/StatsOverview'; 
-import PaymentsModal from './components/PaymentsModal'; // NEW IMPORT
+import PaymentsModal from './components/PaymentsModal'; 
+import ExportModal from './components/ExportModal'; // NEW IMPORT
 import { db } from './services/db'; 
-import { Plus, Upload, Briefcase, ChevronLeft, ChevronRight, List, Settings, Filter, CalendarDays, Wallet } from 'lucide-react';
+import { Plus, Upload, Briefcase, ChevronLeft, ChevronRight, List, Settings, Filter, CalendarDays, Wallet, Download } from 'lucide-react';
 
 const DEFAULT_COLOR = '#38bdf8';
 
@@ -21,7 +22,8 @@ const App: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false); 
-  const [isPaymentsOpen, setIsPaymentsOpen] = useState(false); // NEW STATE
+  const [isPaymentsOpen, setIsPaymentsOpen] = useState(false); 
+  const [isExportOpen, setIsExportOpen] = useState(false); // NEW STATE
   
   // Conflict Modal State
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
@@ -220,8 +222,6 @@ const App: React.FC = () => {
   // NEW: Batch Update for Payments
   const handleBatchUpdateCourses = (updatedCoursesList: Course[]) => {
     // Update local state by merging
-    // We can just replace the whole array if updatedCoursesList is the full list, 
-    // but the modal passes back the full list with modifications.
     setCourses(updatedCoursesList);
     db.courses.saveAll(updatedCoursesList);
   };
@@ -296,6 +296,13 @@ const App: React.FC = () => {
               title="Importa da testo"
             >
               <Upload size={20} />
+            </button>
+            <button 
+              onClick={() => setIsExportOpen(true)}
+              className="p-2.5 text-slate-400 hover:text-blue-400 hover:bg-white/5 rounded-xl transition"
+              title="Esporta Report"
+            >
+              <Download size={20} />
             </button>
             <button 
               onClick={() => setIsPaymentsOpen(true)}
@@ -503,6 +510,13 @@ const App: React.FC = () => {
         courses={courses}
         institutes={institutes}
         onUpdateCourses={handleBatchUpdateCourses}
+      />
+
+      <ExportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        courses={courses}
+        institutes={institutes}
       />
 
       {showNotificationModal && (
