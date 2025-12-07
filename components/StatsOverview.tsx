@@ -15,34 +15,14 @@ const StatsOverview: React.FC<StatsOverviewProps> = ({
 }) => {
   
   const stats = useMemo(() => {
-    // Helper to calculate cost for a single course
-    const calculateEarnings = (course: Course) => {
-      const inst = institutes.find(i => i.id === course.instituteId);
-      if (!inst || !inst.defaultRate) return 0;
-
-      if (inst.rateType === 'PER_LESSON') {
-        return inst.defaultRate;
-      } else {
-        // HOURLY
-        const [startH, startM] = course.startTime.split(':').map(Number);
-        const [endH, endM] = course.endTime.split(':').map(Number);
-        
-        if (isNaN(startH) || isNaN(endH)) return 0;
-
-        const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
-        const durationHours = durationMinutes / 60;
-        return durationHours * inst.defaultRate;
-      }
-    };
-
+    
     // Filter logic
     const filterFn = (c: Course) => {
        if (selectedInstituteId && c.instituteId !== selectedInstituteId) return false;
        return true;
     };
 
-    // 1. Current Month Stats
-    // FIX: Parse date string directly "YYYY-MM-DD" to avoid timezone shifts with new Date()
+    // --- MONTH LOGIC ---
     const monthCourses = courses.filter(c => {
        if (!c.date) return false;
        const parts = c.date.split('-'); // ["2023", "10", "25"]
@@ -62,14 +42,29 @@ const StatsOverview: React.FC<StatsOverviewProps> = ({
        const [startH, startM] = c.startTime.split(':').map(Number);
        const [endH, endM] = c.endTime.split(':').map(Number);
        
+       let durationInHours = 0;
+
        if (!isNaN(startH) && !isNaN(endH)) {
-           const diff = (endH * 60 + endM) - (startH * 60 + startM);
-           if (diff > 0) monthMinutes += diff;
+           // Calculate minutes difference
+           let diff = (endH * 60 + endM) - (startH * 60 + startM);
+           if (diff < 0) diff = 0; // Prevent negative time
+           monthMinutes += diff;
+           durationInHours = diff / 60;
        }
-       monthEarnings += calculateEarnings(c);
+
+       // Calculate Earnings for this specific course based on its duration
+       const inst = institutes.find(i => i.id === c.instituteId);
+       if (inst && inst.defaultRate) {
+           if (inst.rateType === 'PER_LESSON') {
+             monthEarnings += inst.defaultRate;
+           } else {
+             // HOURLY
+             monthEarnings += (durationInHours * inst.defaultRate);
+           }
+       }
     });
 
-    // 2. Year Stats
+    // --- YEAR LOGIC ---
     const yearCourses = courses.filter(c => {
        if (!c.date) return false;
        const parts = c.date.split('-');
@@ -81,7 +76,24 @@ const StatsOverview: React.FC<StatsOverviewProps> = ({
 
     let yearEarnings = 0;
     yearCourses.forEach(c => {
-       yearEarnings += calculateEarnings(c);
+       const [startH, startM] = c.startTime.split(':').map(Number);
+       const [endH, endM] = c.endTime.split(':').map(Number);
+       let durationInHours = 0;
+       
+       if (!isNaN(startH) && !isNaN(endH)) {
+           let diff = (endH * 60 + endM) - (startH * 60 + startM);
+           if (diff < 0) diff = 0;
+           durationInHours = diff / 60;
+       }
+
+       const inst = institutes.find(i => i.id === c.instituteId);
+       if (inst && inst.defaultRate) {
+           if (inst.rateType === 'PER_LESSON') {
+             yearEarnings += inst.defaultRate;
+           } else {
+             yearEarnings += (durationInHours * inst.defaultRate);
+           }
+       }
     });
 
     return {

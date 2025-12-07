@@ -298,7 +298,7 @@ const App: React.FC = () => {
             </button>
             <button 
               onClick={() => { setEditingCourse(null); setIsFormOpen(true); }}
-              className="bg-white text-slate-900 hover:bg-slate-200 transition rounded-xl p-2.5 sm:px-4 sm:py-2.5 flex items-center gap-2 font-bold shadow-lg shadow-white/5"
+              className="bg-indigo-600 text-white hover:bg-indigo-500 transition rounded-xl p-2.5 sm:px-4 sm:py-2.5 flex items-center gap-2 font-bold shadow-lg shadow-indigo-500/20"
             >
                <Plus size={20} />
                <span className="hidden sm:inline">Nuova</span>
