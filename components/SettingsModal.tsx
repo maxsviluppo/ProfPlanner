@@ -91,17 +91,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const confirmReset = () => {
-      // Step 1: Initial safety check
-      if (!window.confirm("ATTENZIONE: Azione distruttiva.\nSei sicuro di voler eliminare i dati del diario?")) {
-        return;
+      // Step 1: Explicitly confirm deleting LESSONS (Base action)
+      if (!window.confirm("SEI SICURO?\n\nStai per eliminare tutte le lezioni dal diario.\nQuesta operazione è irreversibile.\n\nPremi OK per procedere.")) {
+        return; // User cancelled, do nothing.
       }
 
       // Step 2: Check for institutes
       if (institutes.length > 0) {
           const deleteInstitutes = window.confirm(
-              `⚠️ Ho trovato ${institutes.length} scuole salvate.\n\n` +
-              "Premi OK per eliminare TUTTO (Scuole + Lezioni).\n" +
-              "Premi ANNULLA per MANTENERE LE SCUOLE (e cancellare solo le lezioni)."
+              `Hai ${institutes.length} scuole salvate.\n\n` +
+              "Vuoi eliminare anche le SCUOLE?\n\n" +
+              "OK = Elimina Scuole e Lezioni (Reset Totale)\n" +
+              "ANNULLA = Mantieni Scuole (elimina solo lezioni)"
           );
           
           // deleteInstitutes = true (OK) -> Reset All (keep=false)
@@ -147,7 +148,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-5 custom-scrollbar pb-10">
           
           {activeTab === 'general' ? (
              <div className="space-y-6">
@@ -176,11 +177,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         <h3 className="font-bold text-sm uppercase tracking-wider">Zona Pericolo</h3>
                     </div>
                     <p className="text-xs text-slate-400">
-                        Elimina permanentemente tutti i corsi, gli istituti e i dati salvati. Questa azione non può essere annullata.
+                        Elimina permanentemente le lezioni e i dati salvati.
                     </p>
                     <button 
+                        type="button"
                         onClick={confirmReset}
-                        className="w-full py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg transition text-sm flex items-center justify-center gap-2"
+                        className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg transition text-sm flex items-center justify-center gap-2 shadow-lg"
                     >
                         <Trash2 size={16} />
                         Elimina tutto e Resetta
@@ -188,7 +190,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 <div className="text-center p-4">
-                  <p className="text-xs text-slate-500">Versione 1.0.0 • ProfPlanner</p>
+                  <p className="text-xs text-slate-500">Versione 1.0.1 • ProfPlanner</p>
                 </div>
              </div>
           ) : (
