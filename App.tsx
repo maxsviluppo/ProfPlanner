@@ -289,38 +289,38 @@ const App: React.FC = () => {
              </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <button 
               onClick={() => setIsImportOpen(true)}
-              className="p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition"
+              className="p-2 sm:p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition"
               title="Importa da testo"
             >
               <Upload size={20} />
             </button>
             <button 
               onClick={() => setIsExportOpen(true)}
-              className="p-2.5 text-slate-400 hover:text-blue-400 hover:bg-white/5 rounded-xl transition"
+              className="p-2 sm:p-2.5 text-slate-400 hover:text-blue-400 hover:bg-white/5 rounded-xl transition"
               title="Esporta Report"
             >
               <Download size={20} />
             </button>
             <button 
               onClick={() => setIsPaymentsOpen(true)}
-              className="p-2.5 text-slate-400 hover:text-emerald-400 hover:bg-white/5 rounded-xl transition"
+              className="p-2 sm:p-2.5 text-slate-400 hover:text-emerald-400 hover:bg-white/5 rounded-xl transition"
               title="Gestione Pagamenti"
             >
               <Wallet size={20} />
             </button>
             <button 
               onClick={() => setIsSettingsOpen(true)}
-              className="p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition"
+              className="p-2 sm:p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition"
               title="Impostazioni"
             >
               <Settings size={20} />
             </button>
             <button 
               onClick={() => { setEditingCourse(null); setIsFormOpen(true); }}
-              className="bg-indigo-600 text-white hover:bg-indigo-500 transition rounded-xl p-2.5 sm:px-4 sm:py-2.5 flex items-center gap-2 font-bold shadow-lg shadow-indigo-500/20"
+              className="bg-indigo-600 text-white hover:bg-indigo-500 transition rounded-xl p-2 sm:px-4 sm:py-2.5 flex items-center gap-2 font-bold shadow-lg shadow-indigo-500/20"
             >
                <Plus size={20} />
                <span className="hidden sm:inline">Nuova</span>
