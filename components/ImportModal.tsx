@@ -30,10 +30,17 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport, in
       if (courses.length === 0) {
         setError("L'AI non ha trovato corsi validi nel testo. Riprova con un formato più chiaro.");
       } else {
-        // If an institute is selected, apply it to all imported courses
-        const finalCourses = selectedInstituteId 
-            ? courses.map(c => ({ ...c, instituteId: selectedInstituteId }))
-            : courses;
+        // Get today's date in YYYY-MM-DD format
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        // Process courses:
+        // 1. Assign selected institute if any
+        // 2. Mark as completed if the date is in the past
+        const finalCourses = courses.map(c => ({ 
+            ...c, 
+            instituteId: selectedInstituteId || c.instituteId,
+            completed: c.date < todayStr
+        }));
 
         onImport(finalCourses);
         setInputText('');
@@ -72,7 +79,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport, in
         <div className="p-6 flex-1 flex flex-col gap-4 overflow-y-auto custom-scrollbar">
           
           {/* Institute Selector (Optional) */}
-          <div className="bg-slate-800/50 p-3 rounded-xl border border-white/5 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="bg-slate-800/50 p-3 rounded-xl border border-white/10 flex flex-col sm:flex-row sm:items-center gap-3">
              <div className="flex items-center gap-2 text-slate-400 shrink-0">
                 <Building2 size={18} />
                 <span className="text-sm font-medium">Associa a Scuola:</span>

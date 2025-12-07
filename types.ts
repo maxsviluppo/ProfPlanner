@@ -21,6 +21,7 @@ export interface Course {
   // New fields
   completed?: boolean;
   topics?: string;
+  isPaid?: boolean; // Payment status
 }
 
 export interface RawImportData {
