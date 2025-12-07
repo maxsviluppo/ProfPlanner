@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Course, Institute } from '../types';
-import { X, Wallet, Filter, CheckCircle2, Circle, Calculator, Calendar, Tag, ArrowUpDown, Euro } from 'lucide-react';
+import { X, Wallet, Filter, CheckCircle2, Circle, Calculator, Calendar, Tag, ArrowUpDown } from 'lucide-react';
 
 interface PaymentsModalProps {
   isOpen: boolean;

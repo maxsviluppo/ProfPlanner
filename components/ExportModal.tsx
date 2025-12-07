@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Course, Institute } from '../types';
-import { X, FileText, Calendar, Download, Share2, Copy, CheckCircle2, Filter, Sun, Moon } from 'lucide-react';
+import { X, FileText, Calendar, Download, Share2, Copy, CheckCircle2, Filter, Sun } from 'lucide-react';
 
 interface ExportModalProps {
   isOpen: boolean;
