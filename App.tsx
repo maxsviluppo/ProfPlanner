@@ -9,13 +9,20 @@ import SettingsModal from './components/SettingsModal';
 import CalendarView from './components/CalendarView';
 import StatsOverview from './components/StatsOverview'; 
 import PaymentsModal from './components/PaymentsModal'; 
-import ExportModal from './components/ExportModal'; // NEW IMPORT
+import ExportModal from './components/ExportModal'; 
+import { Auth } from './components/Auth'; // AUTH COMPONENT
 import { db } from './services/db'; 
-import { Plus, Upload, Briefcase, ChevronLeft, ChevronRight, List, Settings, Filter, CalendarDays, Wallet, Download } from 'lucide-react';
+import { supabase } from './services/supabaseClient';
+import { Plus, Upload, Briefcase, ChevronLeft, ChevronRight, List, Settings, Filter, CalendarDays, Wallet, Download, LogOut } from 'lucide-react';
 
 const DEFAULT_COLOR = '#38bdf8';
 
 const App: React.FC = () => {
+  // Session State
+  const [session, setSession] = useState<any>(null);
+  const [loadingSession, setLoadingSession] = useState(true);
+
+  // App State
   const [courses, setCourses] = useState<Course[]>([]);
   const [institutes, setInstitutes] = useState<Institute[]>([]);
   
@@ -23,7 +30,7 @@ const App: React.FC = () => {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false); 
   const [isPaymentsOpen, setIsPaymentsOpen] = useState(false); 
-  const [isExportOpen, setIsExportOpen] = useState(false); // NEW STATE
+  const [isExportOpen, setIsExportOpen] = useState(false);
   
   // Conflict Modal State
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
@@ -54,25 +61,50 @@ const App: React.FC = () => {
   // Extract unique subjects for the filter dropdown
   const uniqueSubjects = Array.from(new Set(courses.map(c => c.name))).sort();
 
-  // Load initial data (Async from DB)
+  // --- 1. SESSION MANAGEMENT ---
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [loadedCourses, loadedInstitutes] = await Promise.all([
-          db.courses.getAll(),
-          db.institutes.getAll()
-        ]);
-        setCourses(loadedCourses);
-        setInstitutes(loadedInstitutes);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoadingSession(false);
+    });
 
-        // Check for notifications
-        checkTomorrowCourses(loadedCourses);
-      } catch (e) {
-        console.error("Failed to load data", e);
-      }
-    };
-    loadData();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  // --- 2. DATA LOADING ---
+  const loadData = async () => {
+    if (!session) return;
+    try {
+      const [loadedCourses, loadedInstitutes] = await Promise.all([
+        db.courses.getAll(),
+        db.institutes.getAll()
+      ]);
+      setCourses(loadedCourses);
+      setInstitutes(loadedInstitutes);
+
+      checkTomorrowCourses(loadedCourses);
+    } catch (e) {
+      console.error("Failed to load data", e);
+    }
+  };
+
+  useEffect(() => {
+    if (session) {
+        loadData();
+    } else {
+        setCourses([]);
+        setInstitutes([]);
+    }
+  }, [session]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setSession(null);
+  };
 
   const checkTomorrowCourses = (currentCourses: Course[]) => {
      const tomorrow = new Date();
@@ -106,41 +138,53 @@ const App: React.FC = () => {
     }
   };
 
-  // --- Institute Management ---
-  const handleAddInstitute = (name: string, color: string = DEFAULT_COLOR, rate?: number, rateType?: 'HOURLY' | 'PER_LESSON') => {
+  // --- Institute Management (REAL TIME DB) ---
+  const handleAddInstitute = async (name: string, color: string = DEFAULT_COLOR, rate?: number, rateType?: 'HOURLY' | 'PER_LESSON') => {
+    // Generate temporary ID or handle on backend. Here we use text ID for consistency
     const newInst: Institute = {
-      id: Date.now().toString() + Math.random().toString(36).substring(2,5),
+      id: crypto.randomUUID(),
       name,
       color,
       defaultRate: rate,
       rateType: rateType || 'HOURLY'
     };
-    const updated = [...institutes, newInst];
-    setInstitutes(updated);
-    db.institutes.saveAll(updated);
+    
+    // Optimistic UI Update
+    setInstitutes(prev => [...prev, newInst]); 
+    
+    try {
+        await db.institutes.create(newInst);
+    } catch (error) {
+        console.error("Error creating institute", error);
+        // Revert on error could go here
+    }
     return newInst;
   };
 
-  const handleUpdateInstitute = (updatedInst: Institute) => {
-    const updated = institutes.map(i => i.id === updatedInst.id ? updatedInst : i);
-    setInstitutes(updated);
-    db.institutes.saveAll(updated);
-  };
-
-  const handleDeleteInstitute = (id: string) => {
-    if (window.confirm("Eliminare questa scuola? Le lezioni associate rimarranno ma senza scuola.")) {
-      const updated = institutes.filter(i => i.id !== id);
-      setInstitutes(updated);
-      db.institutes.saveAll(updated);
-      
-      // Update courses to remove instituteId
-      const updatedCourses = courses.map(c => c.instituteId === id ? { ...c, instituteId: undefined } : c);
-      setCourses(updatedCourses);
-      db.courses.saveAll(updatedCourses);
+  const handleUpdateInstitute = async (updatedInst: Institute) => {
+    setInstitutes(institutes.map(i => i.id === updatedInst.id ? updatedInst : i));
+    try {
+        await db.institutes.update(updatedInst);
+    } catch (error) {
+        console.error("Error updating institute", error);
     }
   };
 
-  // --- Course Management ---
+  const handleDeleteInstitute = async (id: string) => {
+    if (window.confirm("Eliminare questa scuola? Le lezioni associate rimarranno ma senza scuola.")) {
+      setInstitutes(institutes.filter(i => i.id !== id));
+      // Remove instituteId from local courses
+      setCourses(courses.map(c => c.instituteId === id ? { ...c, instituteId: undefined } : c));
+      
+      try {
+          await db.institutes.delete(id);
+      } catch (error) {
+          console.error("Error deleting institute", error);
+      }
+    }
+  };
+
+  // --- Course Management (REAL TIME DB) ---
 
   const checkConflicts = (newCourses: Course[], existingCourses: Course[], skipIds: string[] = []): string[] => {
     const conflicts: string[] = [];
@@ -150,13 +194,12 @@ const App: React.FC = () => {
        const newEnd = parseInt(newC.endTime.replace(':', ''));
        
        existingCourses.forEach(exC => {
-          if (skipIds.includes(exC.id)) return; // Don't check against self (edit mode) or other new courses in same batch
+          if (skipIds.includes(exC.id)) return; 
           if (newC.date !== exC.date) return;
           
           const exStart = parseInt(exC.startTime.replace(':', ''));
           const exEnd = parseInt(exC.endTime.replace(':', ''));
 
-          // Check overlap
           if (newStart < exEnd && newEnd > exStart) {
             conflicts.push(`CONFLITTO: ${newC.date} | ${newC.startTime}-${newC.endTime} (${newC.name}) si sovrappone a ${exC.startTime}-${exC.endTime} (${exC.name})`);
           }
@@ -166,33 +209,36 @@ const App: React.FC = () => {
     return conflicts;
   };
 
-  const saveCoursesToDb = (coursesToSave: Course[], isUpdate: boolean) => {
-    let updatedCourses = [...courses];
-    
+  const saveCoursesToDb = async (coursesToSave: Course[], isUpdate: boolean) => {
     if (isUpdate) {
-        // Remove old versions of these courses (based on ID)
+        // Optimistic
         const idsToUpdate = coursesToSave.map(c => c.id);
-        updatedCourses = updatedCourses.map(c => idsToUpdate.includes(c.id) 
-            ? coursesToSave.find(n => n.id === c.id)! 
-            : c
-        );
+        setCourses(courses.map(c => idsToUpdate.includes(c.id) ? coursesToSave.find(n => n.id === c.id)! : c));
+        
+        // DB Call
+        try {
+            await Promise.all(coursesToSave.map(c => db.courses.update(c)));
+        } catch (error) {
+            console.error("Update failed", error);
+        }
     } else {
         // Add new
-        updatedCourses = [...updatedCourses, ...coursesToSave];
+        setCourses([...courses, ...coursesToSave]);
+        try {
+            await db.courses.createMany(coursesToSave);
+        } catch (error) {
+             console.error("Create failed", error);
+        }
     }
 
-    setCourses(updatedCourses);
-    db.courses.saveAll(updatedCourses);
     setConflictMessages([]);
     setIsConflictModalOpen(false);
   };
 
   const handleSaveCourses = (newCourses: Course[]) => {
-    // Determine if this is an edit (single course with existing ID) or new
     const isEdit = newCourses.length === 1 && courses.some(c => c.id === newCourses[0].id);
     const idsToSkip = isEdit ? [newCourses[0].id] : [];
 
-    // Check conflicts
     const conflicts = checkConflicts(newCourses, courses, idsToSkip);
 
     if (conflicts.length > 0) {
@@ -204,48 +250,79 @@ const App: React.FC = () => {
     saveCoursesToDb(newCourses, isEdit);
   };
 
-  const handleDeleteCourse = (id: string) => {
+  const handleDeleteCourse = async (id: string) => {
     if (window.confirm("Sei sicuro di voler eliminare questa lezione?")) {
-      const updated = courses.filter(c => c.id !== id);
-      setCourses(updated);
-      db.courses.saveAll(updated);
+      setCourses(courses.filter(c => c.id !== id));
+      try {
+         await db.courses.delete(id);
+      } catch (error) {
+         console.error("Delete failed", error);
+      }
     }
   };
 
-  const handleUpdateCourseStatus = (updatedCourse: Course) => {
-    // Direct update without conflict check (used for checkboxes, notes, etc.)
-    const updated = courses.map(c => c.id === updatedCourse.id ? updatedCourse : c);
-    setCourses(updated);
-    db.courses.saveAll(updated);
+  const handleUpdateCourseStatus = async (updatedCourse: Course) => {
+    setCourses(courses.map(c => c.id === updatedCourse.id ? updatedCourse : c));
+    try {
+        await db.courses.update(updatedCourse);
+    } catch (error) {
+        console.error("Status update failed", error);
+    }
   };
   
-  // NEW: Batch Update for Payments
-  const handleBatchUpdateCourses = (updatedCoursesList: Course[]) => {
-    // Update local state by merging
-    setCourses(updatedCoursesList);
-    db.courses.saveAll(updatedCoursesList);
+  const handleBatchUpdateCourses = async (updatedCoursesList: Course[]) => {
+    setCourses(updatedCoursesList); // This might be heavy if list is huge, usually we merge
+    try {
+        await db.courses.upsertMany(updatedCoursesList);
+    } catch (error) {
+        console.error("Batch update failed", error);
+    }
   };
 
-  const handleImportCourses = (importedCourses: Course[]) => {
-    // For imports, we simply append. You might want conflict checks here too, 
-    // but for bulk import usually we just dump it in.
-    const merged = [...courses, ...importedCourses];
-    setCourses(merged);
-    db.courses.saveAll(merged);
+  const handleImportCourses = async (importedCourses: Course[]) => {
+    setCourses([...courses, ...importedCourses]);
+    try {
+        await db.courses.createMany(importedCourses);
+    } catch (error) {
+        console.error("Import failed", error);
+    }
   };
 
-  const handleResetAll = (keepInstitutes: boolean = false) => {
+  const handleResetAll = async (keepInstitutes: boolean = false) => {
     setCourses([]);
-    db.courses.saveAll([]);
+    try {
+        await db.courses.deleteAll();
+    } catch (e) { console.error(e); }
     
     if (!keepInstitutes) {
         setInstitutes([]);
-        db.institutes.saveAll([]);
+        try {
+            await db.institutes.deleteAll();
+        } catch (e) { console.error(e); }
     }
     setIsSettingsOpen(false);
   };
 
-  // --- Filtering & View Helpers ---
+  // --- RENDER ---
+  
+  if (loadingSession) {
+      return (
+          <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
+              <div className="animate-pulse flex flex-col items-center">
+                  <Briefcase size={40} className="text-purple-500 mb-4" />
+                  <p className="text-slate-400 font-medium">Caricamento...</p>
+              </div>
+          </div>
+      );
+  }
+
+  // If NOT authenticated, show Auth Screen
+  if (!session) {
+      return <Auth />;
+  }
+
+  // If Authenticated, show Main App
+  // ... (Filtering Logic for View) ...
   const filteredCourses = courses
     .filter(c => !selectedInstituteFilter || c.instituteId === selectedInstituteFilter)
     .filter(c => !selectedSubjectFilter || c.name === selectedSubjectFilter)
@@ -256,7 +333,7 @@ const App: React.FC = () => {
 
   const displayCourses = viewMode === 'list' 
     ? filteredCourses 
-    : filteredCourses.filter(c => c.date === selectedDate); // Calendar view shows selected date details below
+    : filteredCourses.filter(c => c.date === selectedDate); 
 
   const changeMonth = (delta: number) => {
     let newM = viewMonth + delta;
@@ -292,7 +369,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-1 sm:gap-2">
             <button 
               onClick={() => setIsImportOpen(true)}
-              className="p-2 sm:p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition"
+              className="p-2 sm:p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition hidden sm:block"
               title="Importa da testo"
             >
               <Upload size={20} />
@@ -319,8 +396,15 @@ const App: React.FC = () => {
               <Settings size={20} />
             </button>
             <button 
+               onClick={handleLogout}
+               className="p-2 sm:p-2.5 text-slate-400 hover:text-red-400 hover:bg-white/5 rounded-xl transition"
+               title="Disconnetti"
+            >
+               <LogOut size={20} />
+            </button>
+            <button 
               onClick={() => { setEditingCourse(null); setIsFormOpen(true); }}
-              className="bg-indigo-600 text-white hover:bg-indigo-500 transition rounded-xl p-2 sm:px-4 sm:py-2.5 flex items-center gap-2 font-bold shadow-lg shadow-indigo-500/20"
+              className="bg-indigo-600 text-white hover:bg-indigo-500 transition rounded-xl p-2 sm:px-4 sm:py-2.5 flex items-center gap-2 font-bold shadow-lg shadow-indigo-500/20 ml-1"
             >
                <Plus size={20} />
                <span className="hidden sm:inline">Nuova</span>
@@ -443,8 +527,7 @@ const App: React.FC = () => {
            ) : (
              <div className="space-y-3">
                {displayCourses.length > 0 ? (
-                 // Group by date for List View logic could be added here, 
-                 // currently just flat list sorted
+                 // Group by date for List View logic could be added here
                  displayCourses.map((course, index) => {
                    const showHeader = index === 0 || displayCourses[index-1].date !== course.date;
                    return (
