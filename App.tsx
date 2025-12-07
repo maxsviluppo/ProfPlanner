@@ -353,59 +353,62 @@ const App: React.FC = () => {
       </div>
 
       {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-lg border-b border-white/5 px-4 py-3 shadow-sm">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-             <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-900/20">
-                <Briefcase className="text-white" size={20} />
+      <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-lg border-b border-white/5 px-3 py-2 sm:px-4 sm:py-3 shadow-sm">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
+          
+          {/* LEFT SIDE: LOGO + TEXT */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink min-w-0">
+             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-purple-900/20 shrink-0">
+                <Briefcase className="text-white w-4 h-4 sm:w-5 sm:h-5" />
              </div>
-             <div>
-               <h1 className="font-bold text-lg text-white leading-none">ProfPlanner</h1>
-               <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">{todayFormatted}</p>
+             <div className="min-w-0">
+               <h1 className="font-bold text-base sm:text-lg text-white leading-none truncate">ProfPlanner</h1>
+               <p className="text-[10px] sm:text-xs text-slate-400 font-medium uppercase tracking-wide truncate">{todayFormatted}</p>
              </div>
           </div>
           
-          <div className="flex items-center gap-1 sm:gap-2">
+          {/* RIGHT SIDE: ICONS */}
+          <div className="flex items-center gap-0.5 sm:gap-2 shrink-0">
             <button 
               onClick={() => setIsImportOpen(true)}
-              className="p-2 sm:p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition hidden sm:block"
+              className="p-1.5 sm:p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition"
               title="Importa da testo"
             >
-              <Upload size={20} />
+              <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <button 
               onClick={() => setIsExportOpen(true)}
-              className="p-2 sm:p-2.5 text-slate-400 hover:text-blue-400 hover:bg-white/5 rounded-xl transition"
+              className="p-1.5 sm:p-2.5 text-slate-400 hover:text-blue-400 hover:bg-white/5 rounded-xl transition"
               title="Esporta Report"
             >
-              <Download size={20} />
+              <Download className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <button 
               onClick={() => setIsPaymentsOpen(true)}
-              className="p-2 sm:p-2.5 text-slate-400 hover:text-emerald-400 hover:bg-white/5 rounded-xl transition"
+              className="p-1.5 sm:p-2.5 text-slate-400 hover:text-emerald-400 hover:bg-white/5 rounded-xl transition"
               title="Gestione Pagamenti"
             >
-              <Wallet size={20} />
+              <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <button 
               onClick={() => setIsSettingsOpen(true)}
-              className="p-2 sm:p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition"
+              className="p-1.5 sm:p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition"
               title="Impostazioni"
             >
-              <Settings size={20} />
+              <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <button 
                onClick={handleLogout}
-               className="p-2 sm:p-2.5 text-slate-400 hover:text-red-400 hover:bg-white/5 rounded-xl transition"
+               className="p-1.5 sm:p-2.5 text-slate-400 hover:text-red-400 hover:bg-white/5 rounded-xl transition"
                title="Disconnetti"
             >
-               <LogOut size={20} />
+               <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <button 
               onClick={() => { setEditingCourse(null); setIsFormOpen(true); }}
-              className="bg-indigo-600 text-white hover:bg-indigo-500 transition rounded-xl p-2 sm:px-4 sm:py-2.5 flex items-center gap-2 font-bold shadow-lg shadow-indigo-500/20 ml-1"
+              className="bg-indigo-600 text-white hover:bg-indigo-500 transition rounded-xl p-1.5 sm:px-4 sm:py-2.5 flex items-center gap-2 font-bold shadow-lg shadow-indigo-500/20 ml-1"
             >
-               <Plus size={20} />
+               <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                <span className="hidden sm:inline">Nuova</span>
             </button>
           </div>
