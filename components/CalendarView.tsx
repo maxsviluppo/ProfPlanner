@@ -81,9 +81,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({
               onClick={() => onSelectDate(dateStr)}
               className={`aspect-square relative rounded-lg sm:rounded-xl overflow-hidden cursor-pointer transition-all duration-300 border group shadow-sm ${
                 isSelected 
-                  ? 'border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)] z-10 scale-105' 
+                  ? 'border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.6)] z-20 scale-105 ring-1 ring-purple-400' 
                   : isToday
-                    ? 'border-white/40'
+                    ? 'border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.5)] bg-cyan-900/20 z-10 ring-1 ring-cyan-400' 
                     : 'border-white/10 hover:border-white/30'
               } bg-slate-900/40`}
             >
@@ -102,7 +102,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({
               {/* Day Number Overlay */}
               <div className="absolute inset-0 flex items-center justify-center z-20">
                 <span className={`text-base sm:text-lg font-bold drop-shadow-md ${
-                  isSelected ? 'text-white scale-110' : 'text-slate-200 group-hover:text-white'
+                  isSelected 
+                    ? 'text-white scale-110' 
+                    : isToday 
+                        ? 'text-cyan-50' 
+                        : 'text-slate-200 group-hover:text-white'
                 }`} style={{ textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>
                   {day}
                 </span>

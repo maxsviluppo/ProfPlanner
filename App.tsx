@@ -32,8 +32,8 @@ const App: React.FC = () => {
   // Notification Settings
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
-  // View State
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  // View State - Default to 'calendar'
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
   const [selectedInstituteFilter, setSelectedInstituteFilter] = useState<string>(''); // Empty = ALL
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>(''); // Empty = ALL (New Filter)
 
