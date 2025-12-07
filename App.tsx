@@ -323,7 +323,7 @@ const App: React.FC = () => {
           {viewMode === 'calendar' && (
             <div className="flex items-center gap-4 px-2 w-full sm:w-auto justify-between sm:justify-start order-2 sm:order-1">
               <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-white/10 rounded-full text-slate-400"><ChevronLeft size={20}/></button>
-              <h2 className="text-lg font-bold text-white capitalize w-32 text-center">
+              <h2 className="text-lg font-bold text-white capitalize min-w-[140px] text-center whitespace-nowrap">
                 {new Date(viewYear, viewMonth).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
               </h2>
               <button onClick={() => changeMonth(1)} className="p-1 hover:bg-white/10 rounded-full text-slate-400"><ChevronRight size={20}/></button>

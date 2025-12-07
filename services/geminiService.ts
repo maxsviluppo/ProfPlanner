@@ -7,11 +7,14 @@ const generateId = (): string => {
 };
 
 export const parseScheduleData = async (rawData: string): Promise<Course[]> => {
-  if (!process.env.API_KEY) {
-    throw new Error("API Key non configurata o mancante nel file .env");
+  // Check LocalStorage first, then Env
+  const apiKey = localStorage.getItem('profplanner_api_key') || process.env.API_KEY;
+
+  if (!apiKey) {
+    throw new Error("API Key mancante. Vai nelle Impostazioni e inserisci la tua Google Gemini API Key.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: apiKey });
 
   const systemInstruction = `
     Sei un assistente intelligente per un docente.
@@ -72,7 +75,7 @@ export const parseScheduleData = async (rawData: string): Promise<Course[]> => {
     console.error("Errore durante il parsing AI:", error);
     // Return a more specific error message
     if (error.message && error.message.includes("API Key")) {
-        throw new Error("Errore API Key: Verifica la configurazione.");
+        throw new Error("Errore API Key: Verifica la chiave nelle impostazioni.");
     }
     if (error instanceof SyntaxError) {
         throw new Error("L'AI ha generato un formato dati non valido. Riprova.");

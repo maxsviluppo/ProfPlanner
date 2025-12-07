@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Institute } from '../types';
-import { X, Bell, BellOff, Plus, Trash2, Settings, Euro, Clock, Edit2, AlertTriangle } from 'lucide-react';
+import { X, Bell, BellOff, Plus, Trash2, Settings, Euro, Clock, Edit2, AlertTriangle, Key, Eye, EyeOff, ExternalLink, Save } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -47,7 +47,23 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // API Key State
+  const [apiKey, setApiKey] = useState('');
+  const [showKey, setShowKey] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+        const storedKey = localStorage.getItem('profplanner_api_key');
+        if (storedKey) setApiKey(storedKey);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const handleSaveApiKey = () => {
+    localStorage.setItem('profplanner_api_key', apiKey.trim());
+    alert("API Key salvata con successo!");
+  };
 
   const handleSaveInstitute = () => {
     if (!newInstName.trim()) return;
@@ -94,6 +110,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       // Step 1: Explicitly confirm deleting LESSONS (Base action)
       if (!window.confirm("SEI SICURO?\n\nStai per eliminare tutte le lezioni dal diario.\nQuesta operazione è irreversibile.\n\nPremi OK per procedere.")) {
         return; // User cancelled, do nothing.
+      }
+
+      // Check for API Key removal
+      const storedKey = localStorage.getItem('profplanner_api_key');
+      if (storedKey) {
+          if (window.confirm("Vuoi rimuovere anche la API Key di Gemini salvata nel browser?")) {
+              localStorage.removeItem('profplanner_api_key');
+              setApiKey('');
+          }
       }
 
       // Step 2: Check for institutes
@@ -152,6 +177,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           
           {activeTab === 'general' ? (
              <div className="space-y-6">
+                
+                {/* Notifications */}
                 <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5 flex items-center justify-between">
                    <div className="flex gap-3 items-center">
                       <div className={`p-3 rounded-full ${notificationsEnabled ? 'bg-purple-500/20 text-purple-300' : 'bg-slate-700/50 text-slate-500'}`}>
@@ -168,6 +195,60 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                    >
                       <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${notificationsEnabled ? 'left-7' : 'left-1'}`} />
                    </button>
+                </div>
+
+                {/* API Key Management */}
+                <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5 space-y-3">
+                   <div className="flex gap-3 items-center mb-1">
+                      <div className="bg-blue-500/20 text-blue-300 p-2 rounded-lg">
+                        <Key size={18} />
+                      </div>
+                      <div>
+                         <h3 className="font-bold text-white text-sm">Gemini API Key</h3>
+                         <p className="text-xs text-slate-400">Necessaria per l'importazione AI.</p>
+                      </div>
+                   </div>
+                   
+                   <div className="space-y-2">
+                     <div className="flex gap-2">
+                       <div className="relative flex-1">
+                         <input 
+                           type={showKey ? "text" : "password"}
+                           className="w-full bg-slate-900 border border-white/10 rounded-lg pl-3 pr-10 py-2 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none font-mono"
+                           placeholder="Inserisci la tua API Key qui..."
+                           value={apiKey}
+                           onChange={(e) => setApiKey(e.target.value)}
+                         />
+                         <button 
+                           onClick={() => setShowKey(!showKey)}
+                           className="absolute right-2 top-2 text-slate-500 hover:text-white"
+                         >
+                           {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                         </button>
+                       </div>
+                       <button 
+                         onClick={handleSaveApiKey}
+                         className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg flex items-center gap-1 shadow-lg"
+                         title="Salva Key"
+                       >
+                         <Save size={18} />
+                       </button>
+                     </div>
+                     
+                     <div className="flex justify-between items-center px-1">
+                        <a 
+                          href="https://aistudio.google.com/app/apikey" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1"
+                        >
+                          Ottieni una API Key gratuita <ExternalLink size={10} />
+                        </a>
+                        {localStorage.getItem('profplanner_api_key') && (
+                           <span className="text-[10px] text-emerald-400 font-medium">Key salvata ✓</span>
+                        )}
+                     </div>
+                   </div>
                 </div>
                 
                 {/* Danger Zone */}
@@ -190,7 +271,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 <div className="text-center p-4">
-                  <p className="text-xs text-slate-500">Versione 1.0.1 • ProfPlanner</p>
+                  <p className="text-xs text-slate-500">Versione 1.0.2 • ProfPlanner</p>
                 </div>
              </div>
           ) : (
