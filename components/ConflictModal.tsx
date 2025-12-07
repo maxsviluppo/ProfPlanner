@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, X, ArrowLeft, Clock } from 'lucide-react';
+import { X, ArrowLeft, Clock } from 'lucide-react';
 
 interface ConflictModalProps {
   isOpen: boolean;
@@ -8,7 +8,7 @@ interface ConflictModalProps {
   conflicts: string[];
 }
 
-const ConflictModal: React.FC<ConflictModalProps> = ({ isOpen, onClose, onConfirm, conflicts }) => {
+const ConflictModal: React.FC<ConflictModalProps> = ({ isOpen, onClose, conflicts }) => {
   if (!isOpen) return null;
 
   return (

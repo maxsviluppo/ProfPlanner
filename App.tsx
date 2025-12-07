@@ -9,7 +9,7 @@ import SettingsModal from './components/SettingsModal';
 import CalendarView from './components/CalendarView';
 import StatsOverview from './components/StatsOverview'; 
 import { db } from './services/db'; 
-import { Plus, Upload, Briefcase, ChevronLeft, ChevronRight, List, LayoutGrid, Settings, Filter, CalendarDays } from 'lucide-react';
+import { Plus, Upload, Briefcase, ChevronLeft, ChevronRight, List, Settings, Filter, CalendarDays } from 'lucide-react';
 
 const DEFAULT_COLOR = '#38bdf8';
 
@@ -24,7 +24,6 @@ const App: React.FC = () => {
   // Conflict Modal State
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
   const [conflictMessages, setConflictMessages] = useState<string[]>([]);
-  const [pendingCoursesToSave, setPendingCoursesToSave] = useState<Course[]>([]);
 
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [notificationCourses, setNotificationCourses] = useState<Course[]>([]);
@@ -180,7 +179,6 @@ const App: React.FC = () => {
 
     setCourses(updatedCourses);
     db.courses.saveAll(updatedCourses);
-    setPendingCoursesToSave([]);
     setConflictMessages([]);
     setIsConflictModalOpen(false);
   };
@@ -195,7 +193,6 @@ const App: React.FC = () => {
 
     if (conflicts.length > 0) {
       setConflictMessages(conflicts);
-      setPendingCoursesToSave(newCourses); // Store for potential force save (if enabled) or just for context
       setIsConflictModalOpen(true);
       return; 
     }
