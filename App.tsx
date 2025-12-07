@@ -483,7 +483,7 @@ const App: React.FC = () => {
                     onClick={() => setSelectedInstituteFilter('')}
                     className={`px-3 py-2 rounded-xl text-xs font-bold transition border whitespace-nowrap ${
                         selectedInstituteFilter === '' 
-                        ? 'bg-white text-slate-900 border-white' 
+                        ? 'bg-violet-700 text-white border-violet-500 shadow-lg shadow-violet-900/40' 
                         : 'bg-slate-900 text-slate-400 border-white/10 hover:border-white/30'
                     }`}
                   >
