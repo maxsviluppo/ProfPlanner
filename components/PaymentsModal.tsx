@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Course, Institute } from '../types';
-import { X, Wallet, Filter, CheckCircle2, Circle, Calculator, Calendar, Tag, ArrowUpDown } from 'lucide-react';
+import { X, Wallet, Filter, CheckCircle2, Circle, Calculator, Calendar, Tag, ArrowUpDown, Euro } from 'lucide-react';
 
 interface PaymentsModalProps {
   isOpen: boolean;
@@ -111,6 +111,11 @@ const PaymentsModal: React.FC<PaymentsModalProps> = ({ isOpen, onClose, courses,
     });
     return total;
   }, [filteredCourses, selectedIds, institutes]);
+
+  // Calculate Total of LIST (Outstanding or Already Paid)
+  const totalInListAmount = useMemo(() => {
+    return filteredCourses.reduce((acc, c) => acc + calculatePrice(c), 0);
+  }, [filteredCourses, institutes]);
 
   if (!isOpen) return null;
 
@@ -270,11 +275,21 @@ const PaymentsModal: React.FC<PaymentsModalProps> = ({ isOpen, onClose, courses,
 
         {/* Footer Actions */}
         <div className="p-4 border-t border-white/10 bg-slate-900 flex justify-between items-center shrink-0 shadow-[0_-5px_20px_rgba(0,0,0,0.3)]">
-           <div>
-              <p className="text-xs text-slate-400 uppercase font-bold">Totale Selezionato</p>
-              <p className="text-2xl font-bold text-emerald-400 font-mono">
-                € {totalSelectedAmount.toFixed(2)}
-              </p>
+           <div className="flex flex-col gap-1">
+              <div className="flex items-baseline gap-2">
+                <p className="text-[10px] text-slate-400 uppercase font-bold">Selezionato</p>
+                <p className="text-xl font-bold text-white font-mono">
+                    € {totalSelectedAmount.toFixed(2)}
+                </p>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-[10px] text-slate-500 uppercase font-bold">
+                    {activeTab === 'to_pay' ? 'Totale da Saldare' : 'Totale Incassato'}
+                </p>
+                <p className={`text-sm font-bold font-mono ${activeTab === 'to_pay' ? 'text-red-400' : 'text-emerald-400'}`}>
+                    € {totalInListAmount.toFixed(2)}
+                </p>
+              </div>
            </div>
            
            <button
@@ -288,11 +303,11 @@ const PaymentsModal: React.FC<PaymentsModalProps> = ({ isOpen, onClose, courses,
            >
              {activeTab === 'to_pay' ? (
                 <>
-                  <Wallet size={20} /> Conferma Pagamento
+                  <Wallet size={20} /> Conferma
                 </>
              ) : (
                 <>
-                  <ArrowUpDown size={20} /> Ripristina a "Da Pagare"
+                  <ArrowUpDown size={20} /> Ripristina
                 </>
              )}
            </button>

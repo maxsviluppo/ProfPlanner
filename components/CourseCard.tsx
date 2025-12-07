@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Course, Institute } from '../types';
-import { MapPin, Laptop, Edit2, Trash2, Building2, CheckCircle2, ChevronDown, ChevronUp, StickyNote, ExternalLink, Save, Sun, Moon, Mic, MicOff } from 'lucide-react';
+import { MapPin, Laptop, Edit2, Trash2, Building2, CheckCircle2, ChevronDown, ChevronUp, StickyNote, ExternalLink, Save, Sun, Moon, Mic, MicOff, BadgeEuro } from 'lucide-react';
 
 interface CourseCardProps {
   course: Course;
@@ -38,6 +38,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
 
   const isDad = course.modality === 'DAD';
   const isCompleted = course.completed || false;
+  const isPaid = course.isPaid || false;
+
   // FORCE BOOLEAN
   const hasTopics = !!(course.topics && course.topics.trim().length > 0);
   
@@ -275,14 +277,20 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
                 )}
              </div>
 
-             {/* UPDATED: Morning = Yellow/Amber, Afternoon = Violet/Purple */}
-             <div className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 px-1.5 py-0.5 rounded ${
-                 isMorning 
-                    ? 'text-amber-300 bg-amber-500/10 border border-amber-500/20' 
-                    : 'text-violet-300 bg-violet-500/10 border border-violet-500/20'
-             }`}>
-                {isMorning ? <Sun size={10} /> : <Moon size={10} />}
-                {timeOfDayLabel}
+             <div className="flex items-center gap-2">
+                 {isPaid && (
+                   <span className="text-[10px] font-extrabold text-emerald-900 bg-emerald-400 px-1.5 py-0.5 rounded flex items-center gap-0.5 border border-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.4)]">
+                     <BadgeEuro size={10} /> PAGATO
+                   </span>
+                 )}
+                 <div className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 px-1.5 py-0.5 rounded ${
+                     isMorning 
+                        ? 'text-amber-300 bg-amber-500/10 border border-amber-500/20' 
+                        : 'text-violet-300 bg-violet-500/10 border border-violet-500/20'
+                 }`}>
+                    {isMorning ? <Sun size={10} /> : <Moon size={10} />}
+                    {timeOfDayLabel}
+                 </div>
              </div>
           </div>
 
