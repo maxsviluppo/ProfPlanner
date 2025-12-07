@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
 import { parseScheduleData } from '../services/geminiService';
-import { Course } from '../types';
-import { Loader2, X, FileText, Sparkles, AlertCircle } from 'lucide-react';
+import { Course, Institute } from '../types';
+import { Loader2, X, FileText, Sparkles, AlertCircle, Building2 } from 'lucide-react';
 
 interface ImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onImport: (courses: Course[]) => void;
+  institutes: Institute[];
 }
 
-const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) => {
+const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport, institutes }) => {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedInstituteId, setSelectedInstituteId] = useState<string>('');
 
   if (!isOpen) return null;
 
@@ -24,16 +26,22 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
 
     try {
       const courses = await parseScheduleData(inputText);
+      
       if (courses.length === 0) {
         setError("L'AI non ha trovato corsi validi nel testo. Riprova con un formato più chiaro.");
       } else {
-        onImport(courses);
+        // If an institute is selected, apply it to all imported courses
+        const finalCourses = selectedInstituteId 
+            ? courses.map(c => ({ ...c, instituteId: selectedInstituteId }))
+            : courses;
+
+        onImport(finalCourses);
         setInputText('');
+        setSelectedInstituteId('');
         onClose();
       }
     } catch (err: any) {
       console.error("Import error:", err);
-      // Show the actual error message
       setError(err.message || "Errore durante l'elaborazione. Verifica la connessione o i dati.");
     } finally {
       setIsLoading(false);
@@ -41,8 +49,8 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-2xl bg-slate-900/90 border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+      <div className="w-full max-w-2xl bg-slate-900/90 border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-5">
         
         {/* Header */}
         <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
@@ -52,7 +60,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
               Importazione Intelligente
             </h2>
             <p className="text-slate-400 text-sm mt-1">
-              Incolla qui sotto i dati dal tuo file Excel, PDF o email. L'AI organizzerà tutto.
+              L'AI leggerà il testo e creerà il calendario per te.
             </p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition">
@@ -61,13 +69,33 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
         </div>
 
         {/* Body */}
-        <div className="p-6 flex-1 flex flex-col gap-4">
-          <div className="relative flex-1">
+        <div className="p-6 flex-1 flex flex-col gap-4 overflow-y-auto custom-scrollbar">
+          
+          {/* Institute Selector (Optional) */}
+          <div className="bg-slate-800/50 p-3 rounded-xl border border-white/5 flex flex-col sm:flex-row sm:items-center gap-3">
+             <div className="flex items-center gap-2 text-slate-400 shrink-0">
+                <Building2 size={18} />
+                <span className="text-sm font-medium">Associa a Scuola:</span>
+             </div>
+             <select 
+                className="flex-1 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:ring-1 focus:ring-purple-500 outline-none"
+                value={selectedInstituteId}
+                onChange={(e) => setSelectedInstituteId(e.target.value)}
+             >
+                <option value="">-- Nessuna (Standard) --</option>
+                {institutes.map(inst => (
+                   <option key={inst.id} value={inst.id}>{inst.name}</option>
+                ))}
+             </select>
+          </div>
+
+          <div className="relative flex-1 min-h-[200px]">
             <textarea
-              className="w-full h-64 bg-slate-800/50 border border-white/10 rounded-xl p-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none font-mono text-sm"
-              placeholder={`Esempio di dati incollati:
-Lunedì 21/10 Informatica 09:00-13:00 Aula 3
-Martedì 22/10 Inglese 14:00-16:00 Online
+              className="w-full h-full min-h-[250px] bg-slate-800/50 border border-white/10 rounded-xl p-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none font-mono text-sm"
+              placeholder={`Incolla qui orari o testo libero, ad esempio:
+
+"Lunedì 21/10 Informatica 09:00-13:00 Aula 3"
+"Martedì 22/10 Inglese 14:00-16:00 Online"
 ...`}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
