@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabaseClient';
-import { Mail, Lock, LogIn, UserPlus, Key, Eye, EyeOff, Send, ArrowLeft, Loader2, Briefcase } from 'lucide-react';
+import { Mail, Lock, LogIn, UserPlus, Key, Eye, EyeOff, ArrowLeft, Loader2, Briefcase } from 'lucide-react';
 
 export const Auth: React.FC = () => {
   const [loading, setLoading] = useState(false);

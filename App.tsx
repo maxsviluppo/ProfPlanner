@@ -139,7 +139,7 @@ const App: React.FC = () => {
   };
 
   // --- Institute Management (REAL TIME DB) ---
-  const handleAddInstitute = async (name: string, color: string = DEFAULT_COLOR, rate?: number, rateType?: 'HOURLY' | 'PER_LESSON') => {
+  const handleAddInstitute = (name: string, color: string = DEFAULT_COLOR, rate?: number, rateType?: 'HOURLY' | 'PER_LESSON') => {
     // Generate temporary ID or handle on backend. Here we use text ID for consistency
     const newInst: Institute = {
       id: crypto.randomUUID(),
@@ -152,12 +152,11 @@ const App: React.FC = () => {
     // Optimistic UI Update
     setInstitutes(prev => [...prev, newInst]); 
     
-    try {
-        await db.institutes.create(newInst);
-    } catch (error) {
+    // Fire and forget (do not await here to keep function synchronous for UI components)
+    db.institutes.create(newInst).catch(error => {
         console.error("Error creating institute", error);
-        // Revert on error could go here
-    }
+    });
+
     return newInst;
   };
 
