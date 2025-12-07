@@ -11,7 +11,7 @@ interface SettingsModalProps {
   onAddInstitute: (name: string, color: string, rate?: number, rateType?: 'HOURLY' | 'PER_LESSON') => void;
   onUpdateInstitute: (institute: Institute) => void;
   onDeleteInstitute: (id: string) => void;
-  onResetAll: () => void; // New Prop
+  onResetAll: (keepInstitutes?: boolean) => void; 
 }
 
 const PRESET_COLORS = [
@@ -91,8 +91,25 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const confirmReset = () => {
-      if (window.confirm("ATTENZIONE: Stai per eliminare TUTTI i corsi e gli istituti salvati. L'azione è irreversibile. Sei sicuro?")) {
-          onResetAll();
+      // Step 1: Initial safety check
+      if (!window.confirm("ATTENZIONE: Azione distruttiva.\nSei sicuro di voler eliminare i dati del diario?")) {
+        return;
+      }
+
+      // Step 2: Check for institutes
+      if (institutes.length > 0) {
+          const deleteInstitutes = window.confirm(
+              `⚠️ Ho trovato ${institutes.length} scuole salvate.\n\n` +
+              "Premi OK per eliminare TUTTO (Scuole + Lezioni).\n" +
+              "Premi ANNULLA per MANTENERE LE SCUOLE (e cancellare solo le lezioni)."
+          );
+          
+          // deleteInstitutes = true (OK) -> Reset All (keep=false)
+          // deleteInstitutes = false (Cancel) -> Keep Institutes (keep=true)
+          onResetAll(!deleteInstitutes); 
+      } else {
+          // Standard reset (no institutes to worry about)
+          onResetAll(false);
       }
   };
 

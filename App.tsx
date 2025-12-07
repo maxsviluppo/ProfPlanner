@@ -131,13 +131,21 @@ const App: React.FC = () => {
      }
   };
 
-  const handleResetAllData = async () => {
+  const handleResetAllData = async (keepInstitutes: boolean = false) => {
+      // Always clear courses
       setCourses([]);
-      setInstitutes([]);
       await db.courses.saveAll([]);
-      await db.institutes.saveAll([]);
+      
+      // Conditionally clear institutes
+      if (!keepInstitutes) {
+          setInstitutes([]);
+          await db.institutes.saveAll([]);
+          alert("Tutti i dati (Scuole e Lezioni) sono stati eliminati.");
+      } else {
+          alert("Lezioni eliminate. Le scuole registrate sono state mantenute.");
+      }
+      
       setIsSettingsOpen(false);
-      alert("Tutti i dati sono stati eliminati.");
   };
 
   const handleAddInstitute = (name: string, color: string, rate?: number, rateType?: 'HOURLY' | 'PER_LESSON') => {
