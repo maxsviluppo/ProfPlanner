@@ -8,7 +8,7 @@ const generateId = (): string => {
 
 export const parseScheduleData = async (rawData: string): Promise<Course[]> => {
   if (!process.env.API_KEY) {
-    throw new Error("API Key mancante");
+    throw new Error("API Key non configurata o mancante nel file .env");
   }
 
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -54,7 +54,11 @@ export const parseScheduleData = async (rawData: string): Promise<Course[]> => {
       },
     });
 
-    const parsedData = JSON.parse(response.text || "[]");
+    // SANITIZATION: Remove Markdown code blocks if present (common issue with AI JSON responses)
+    let cleanText = response.text || "[]";
+    cleanText = cleanText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    const parsedData = JSON.parse(cleanText);
     
     // Add IDs locally
     return parsedData.map((item: any) => ({
@@ -64,8 +68,15 @@ export const parseScheduleData = async (rawData: string): Promise<Course[]> => {
       notes: item.notes || ''
     }));
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Errore durante il parsing AI:", error);
-    throw new Error("Impossibile interpretare i dati. Assicurati che il testo contenga date e orari chiari.");
+    // Return a more specific error message
+    if (error.message && error.message.includes("API Key")) {
+        throw new Error("Errore API Key: Verifica la configurazione.");
+    }
+    if (error instanceof SyntaxError) {
+        throw new Error("L'AI ha generato un formato dati non valido. Riprova.");
+    }
+    throw new Error(error.message || "Impossibile interpretare i dati.");
   }
 };

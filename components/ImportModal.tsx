@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { parseScheduleData } from '../services/geminiService';
 import { Course } from '../types';
-import { Loader2, X, FileText, Sparkles } from 'lucide-react';
+import { Loader2, X, FileText, Sparkles, AlertCircle } from 'lucide-react';
 
 interface ImportModalProps {
   isOpen: boolean;
@@ -31,10 +31,10 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) 
         setInputText('');
         onClose();
       }
-    } catch (err) {
-      // Logghiamo l'errore per evitare "unused variable" in TypeScript strict mode
+    } catch (err: any) {
       console.error("Import error:", err);
-      setError("Errore durante l'elaborazione. Verifica la connessione o i dati.");
+      // Show the actual error message
+      setError(err.message || "Errore durante l'elaborazione. Verifica la connessione o i dati.");
     } finally {
       setIsLoading(false);
     }
@@ -75,8 +75,9 @@ Martedì 22/10 Inglese 14:00-16:00 Online
           </div>
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-3 rounded-lg text-sm">
-              {error}
+            <div className="bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-3 rounded-lg text-sm flex items-start gap-2 animate-in slide-in-from-bottom-2">
+              <AlertCircle size={18} className="shrink-0 mt-0.5" />
+              <span>{error}</span>
             </div>
           )}
         </div>
