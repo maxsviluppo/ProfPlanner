@@ -204,7 +204,7 @@ const App: React.FC = () => {
 
       if (conflicts.length > 0) {
           setConflictMessages(conflicts);
-          setPendingCoursesToSave(newCourses);
+          setPendingCoursesToSave(newCourses); // Not strictly used in blocking mode but keeps state clean
           setIsConflictModalOpen(true);
       } else {
           processSave(newCourses);
@@ -226,15 +226,25 @@ const App: React.FC = () => {
   };
 
   const handleConflictConfirm = () => {
-      processSave(pendingCoursesToSave);
+      // In blocking mode, this might just close the modal or do nothing
+      // We force correction, so we don't save.
       setIsConflictModalOpen(false);
       setPendingCoursesToSave([]);
   };
 
   const handleImport = (importedCourses: Course[]) => {
-      const updatedList = [...courses, ...importedCourses];
-      setCourses(updatedList);
-      db.courses.saveAll(updatedList);
+      // Check for conflicts before importing
+      const conflicts = checkConflicts(importedCourses);
+
+      if (conflicts.length > 0) {
+          setConflictMessages(conflicts);
+          setIsConflictModalOpen(true);
+          // Import is BLOCKED. User must check data.
+      } else {
+          const updatedList = [...courses, ...importedCourses];
+          setCourses(updatedList);
+          db.courses.saveAll(updatedList);
+      }
   };
 
   const handleDeleteCourse = (id: string) => {
