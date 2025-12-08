@@ -274,28 +274,38 @@ const PaymentsModal: React.FC<PaymentsModalProps> = ({ isOpen, onClose, courses,
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 border-t border-white/10 bg-slate-900 flex justify-between items-center shrink-0 shadow-[0_-5px_20px_rgba(0,0,0,0.3)]">
-           <div className="flex flex-col gap-1">
-              <div className="flex items-baseline gap-2">
-                <p className="text-[10px] text-slate-400 uppercase font-bold">Selezionato</p>
-                <p className="text-xl font-bold text-white font-mono">
+        <div className="p-4 border-t border-white/10 bg-slate-900 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0 shadow-[0_-5px_20px_rgba(0,0,0,0.3)]">
+           
+           {/* Totals Group */}
+           <div className="flex items-center w-full sm:w-auto justify-between sm:justify-start gap-6">
+              
+              {/* Selected Amount */}
+              <div className="flex flex-col">
+                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">Selezionato</p>
+                <p className="text-2xl sm:text-3xl font-bold text-white font-mono tracking-tight leading-none">
                     € {totalSelectedAmount.toFixed(2)}
                 </p>
               </div>
-              <div className="flex items-baseline gap-2">
-                <p className="text-[10px] text-slate-500 uppercase font-bold">
+
+              {/* Separator */}
+              <div className="h-8 w-px bg-white/10 hidden sm:block"></div>
+
+              {/* Total Context Amount */}
+              <div className="flex flex-col text-right sm:text-left">
+                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-0.5">
                     {activeTab === 'to_pay' ? 'Totale da Saldare' : 'Totale Incassato'}
                 </p>
-                <p className={`text-sm font-bold font-mono ${activeTab === 'to_pay' ? 'text-red-400' : 'text-emerald-400'}`}>
+                <p className={`text-lg sm:text-xl font-bold font-mono leading-none ${activeTab === 'to_pay' ? 'text-red-400' : 'text-emerald-400'}`}>
                     € {totalInListAmount.toFixed(2)}
                 </p>
               </div>
+
            </div>
            
            <button
              disabled={selectedIds.size === 0}
              onClick={handleConfirmAction}
-             className={`px-6 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed ${
+             className={`w-full sm:w-auto px-6 py-3 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed ${
                activeTab === 'to_pay' 
                  ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white hover:from-emerald-500 hover:to-green-500' 
                  : 'bg-slate-700 text-white hover:bg-slate-600'
