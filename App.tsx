@@ -302,6 +302,68 @@ const App: React.FC = () => {
     setIsSettingsOpen(false);
   };
 
+  // --- BACKUP & RESTORE ---
+  const handleBackup = () => {
+    const backupData = {
+      version: 1,
+      timestamp: new Date().toISOString(),
+      courses: courses,
+      institutes: institutes
+    };
+    
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `profplanner_backup_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  const handleRestore = async (file: File) => {
+    if(!window.confirm("ATTENZIONE: Questa operazione CANCELLERÀ TUTTI i dati attuali (corsi e scuole) e li sostituirà con quelli presenti nel backup.\n\nL'operazione è irreversibile.\n\nSei sicuro di voler procedere?")) {
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        try {
+            const json = JSON.parse(event.target?.result as string);
+            
+            // Basic validation
+            if (!json.courses || !json.institutes) {
+                alert("File di backup non valido. Mancano dati essenziali.");
+                return;
+            }
+
+            // 1. Clear current DB
+            await db.courses.deleteAll();
+            await db.institutes.deleteAll();
+
+            // 2. Restore Institutes first (to maintain FK integrity if enforced, though here we use loose linking)
+            if (json.institutes.length > 0) {
+               // Ensure IDs are preserved
+               await db.institutes.createMany(json.institutes);
+            }
+
+            // 3. Restore Courses
+            if (json.courses.length > 0) {
+                await db.courses.createMany(json.courses);
+            }
+            
+            // 4. Reload from DB to ensure sync
+            await loadData();
+            alert("Ripristino completato con successo!");
+            setIsSettingsOpen(false);
+
+        } catch (error) {
+            console.error("Restore failed", error);
+            alert("Errore durante la lettura o il ripristino del file. Verifica che sia un JSON valido.");
+        }
+    };
+    reader.readAsText(file);
+  };
+
   // --- RENDER ---
   
   if (loadingSession) {
@@ -588,6 +650,8 @@ const App: React.FC = () => {
         onUpdateInstitute={handleUpdateInstitute}
         onDeleteInstitute={handleDeleteInstitute}
         onResetAll={handleResetAll}
+        onBackup={handleBackup}
+        onRestore={handleRestore}
       />
 
       <PaymentsModal 

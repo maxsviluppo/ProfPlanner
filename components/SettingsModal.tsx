@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Institute } from '../types';
-import { X, Bell, BellOff, Plus, Trash2, Settings, Euro, Clock, Edit2, AlertTriangle, Key, Eye, EyeOff, ExternalLink, Save } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Institute, Course } from '../types';
+import { X, Bell, BellOff, Plus, Trash2, Settings, Euro, Clock, Edit2, AlertTriangle, Key, Eye, EyeOff, ExternalLink, Save, Download, Upload, Database, HardDriveDownload, HardDriveUpload, Check } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -12,6 +12,8 @@ interface SettingsModalProps {
   onUpdateInstitute: (institute: Institute) => void;
   onDeleteInstitute: (id: string) => void;
   onResetAll: (keepInstitutes?: boolean) => void; 
+  onBackup?: () => void;
+  onRestore?: (file: File) => void;
 }
 
 const PRESET_COLORS = [
@@ -35,9 +37,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   onAddInstitute,
   onUpdateInstitute,
   onDeleteInstitute,
-  onResetAll
+  onResetAll,
+  onBackup,
+  onRestore
 }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'institutes'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'institutes' | 'data'>('general');
   
   // Institute Form State
   const [newInstName, setNewInstName] = useState('');
@@ -50,6 +54,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   // API Key State
   const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
+
+  // Restore State
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -130,13 +137,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               "ANNULLA = Mantieni Scuole (elimina solo lezioni)"
           );
           
-          // deleteInstitutes = true (OK) -> Reset All (keep=false)
-          // deleteInstitutes = false (Cancel) -> Keep Institutes (keep=true)
           onResetAll(!deleteInstitutes); 
       } else {
-          // Standard reset (no institutes to worry about)
           onResetAll(false);
       }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0] && onRestore) {
+        onRestore(e.target.files[0]);
+    }
+    // Reset value to allow re-uploading same file
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
@@ -155,27 +167,34 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-white/10">
+        <div className="flex border-b border-white/10 overflow-x-auto">
           <button 
             onClick={() => setActiveTab('general')}
-            className={`flex-1 py-3 text-sm font-medium transition relative ${activeTab === 'general' ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
+            className={`flex-1 py-3 text-sm font-medium transition relative whitespace-nowrap px-4 ${activeTab === 'general' ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
           >
             Generali
             {activeTab === 'general' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-purple-500" />}
           </button>
           <button 
             onClick={() => setActiveTab('institutes')}
-            className={`flex-1 py-3 text-sm font-medium transition relative ${activeTab === 'institutes' ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
+            className={`flex-1 py-3 text-sm font-medium transition relative whitespace-nowrap px-4 ${activeTab === 'institutes' ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
           >
             Istituti & Tariffe
             {activeTab === 'institutes' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-purple-500" />}
+          </button>
+          <button 
+            onClick={() => setActiveTab('data')}
+            className={`flex-1 py-3 text-sm font-medium transition relative whitespace-nowrap px-4 ${activeTab === 'data' ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            Dati & Backup
+            {activeTab === 'data' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-purple-500" />}
           </button>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-5 custom-scrollbar pb-10">
           
-          {activeTab === 'general' ? (
+          {activeTab === 'general' && (
              <div className="space-y-6">
                 
                 {/* Notifications */}
@@ -258,7 +277,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         <h3 className="font-bold text-sm uppercase tracking-wider">Zona Pericolo</h3>
                     </div>
                     <p className="text-xs text-slate-400">
-                        Elimina permanentemente le lezioni e i dati salvati.
+                        Elimina permanentemente le lezioni e i dati salvati su Cloud.
                     </p>
                     <button 
                         type="button"
@@ -271,10 +290,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 <div className="text-center p-4">
-                  <p className="text-xs text-slate-500">Versione 1.0.2 • ProfPlanner</p>
+                  <p className="text-xs text-slate-500">Versione 1.1.0 • ProfPlanner</p>
                 </div>
              </div>
-          ) : (
+          )}
+
+          {activeTab === 'institutes' && (
              <div className="space-y-6">
                 
                 {/* Form */}
@@ -393,6 +414,71 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
              </div>
+          )}
+
+          {activeTab === 'data' && (
+              <div className="space-y-6">
+                 {/* Intro Card */}
+                 <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex items-start gap-3">
+                    <Database className="text-blue-400 shrink-0 mt-1" size={20} />
+                    <div>
+                       <h3 className="text-sm font-bold text-white mb-1">Archivio Cloud & Locale</h3>
+                       <p className="text-xs text-slate-400 leading-relaxed">
+                          I tuoi dati sono salvati automaticamente nel Cloud sicuro (Supabase). 
+                          Puoi usare questa sezione per scaricare una copia locale sul tuo dispositivo o ripristinare i dati in caso di problemi.
+                       </p>
+                    </div>
+                 </div>
+
+                 {/* Backup Action */}
+                 <div className="bg-slate-800/50 p-5 rounded-xl border border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                     <div className="flex items-center gap-3 self-start sm:self-center">
+                         <div className="p-3 bg-emerald-500/20 text-emerald-400 rounded-lg">
+                            <HardDriveDownload size={24} />
+                         </div>
+                         <div>
+                            <h3 className="font-bold text-white">Backup Locale</h3>
+                            <p className="text-xs text-slate-400">Scarica un file JSON con tutti i corsi e le scuole.</p>
+                         </div>
+                     </div>
+                     <button 
+                       onClick={onBackup}
+                       className="w-full sm:w-auto px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold text-sm transition flex items-center justify-center gap-2"
+                     >
+                        <Download size={18} /> Scarica
+                     </button>
+                 </div>
+
+                 {/* Restore Action */}
+                 <div className="bg-slate-800/50 p-5 rounded-xl border border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                     <div className="flex items-center gap-3 self-start sm:self-center">
+                         <div className="p-3 bg-indigo-500/20 text-indigo-400 rounded-lg">
+                            <HardDriveUpload size={24} />
+                         </div>
+                         <div>
+                            <h3 className="font-bold text-white">Ripristina da File</h3>
+                            <p className="text-xs text-slate-400">Carica un backup precedente.</p>
+                            <p className="text-[10px] text-indigo-400 mt-1 font-bold uppercase">Sovrascrive i dati attuali</p>
+                         </div>
+                     </div>
+                     <div className="relative w-full sm:w-auto">
+                        <input 
+                           type="file" 
+                           accept=".json"
+                           ref={fileInputRef}
+                           onChange={handleFileChange}
+                           className="hidden"
+                           id="restore-file-input"
+                        />
+                        <label 
+                           htmlFor="restore-file-input"
+                           className="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-indigo-900/20"
+                        >
+                            <Upload size={18} /> Carica File
+                        </label>
+                     </div>
+                 </div>
+              </div>
           )}
 
         </div>

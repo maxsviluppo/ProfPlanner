@@ -134,6 +134,15 @@ export const db = {
       const { error } = await supabase.from('pp_institutes').insert(mapInstituteToDB(institute, userId));
       if (error) throw error;
     },
+    
+    createMany: async (institutes: Institute[]): Promise<void> => {
+      const userId = await db.auth.getUserId();
+      if (!userId) throw new Error("Utente non autenticato");
+      
+      const mapped = institutes.map(i => mapInstituteToDB(i, userId));
+      const { error } = await supabase.from('pp_institutes').insert(mapped);
+      if (error) throw error;
+    },
 
     update: async (institute: Institute): Promise<void> => {
       const userId = await db.auth.getUserId();
