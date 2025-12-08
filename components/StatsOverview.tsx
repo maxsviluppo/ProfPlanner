@@ -8,10 +8,11 @@ interface StatsOverviewProps {
   viewMonth: number;
   viewYear: number;
   selectedInstituteId: string; // Filter
+  selectedSubjectFilter?: string; // Filter
 }
 
 const StatsOverview: React.FC<StatsOverviewProps> = ({ 
-  courses, institutes, viewMonth, viewYear, selectedInstituteId 
+  courses, institutes, viewMonth, viewYear, selectedInstituteId, selectedSubjectFilter 
 }) => {
   
   const stats = useMemo(() => {
@@ -19,6 +20,7 @@ const StatsOverview: React.FC<StatsOverviewProps> = ({
     // Filter logic
     const filterFn = (c: Course) => {
        if (selectedInstituteId && c.instituteId !== selectedInstituteId) return false;
+       if (selectedSubjectFilter && c.name !== selectedSubjectFilter) return false;
        return true;
     };
 
@@ -103,7 +105,7 @@ const StatsOverview: React.FC<StatsOverviewProps> = ({
       monthEarnings,
       yearEarnings
     };
-  }, [courses, institutes, viewMonth, viewYear, selectedInstituteId]);
+  }, [courses, institutes, viewMonth, viewYear, selectedInstituteId, selectedSubjectFilter]);
 
   // Determine dynamic color based on selection
   const activeColor = selectedInstituteId 
@@ -177,7 +179,7 @@ const StatsOverview: React.FC<StatsOverviewProps> = ({
            </div>
            
            <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-bold text-white tracking-tight">€ {stats.yearEarnings.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+              <span className="text-3xl font-bold text-white tracking-tight">€ {stats.yearEarnings.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
            </div>
         </div>
       </div>

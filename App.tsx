@@ -425,6 +425,7 @@ const App: React.FC = () => {
           viewMonth={viewMonth}
           viewYear={viewYear}
           selectedInstituteId={selectedInstituteFilter}
+          selectedSubjectFilter={selectedSubjectFilter} 
         />
 
         {/* VIEW CONTROLS */}
