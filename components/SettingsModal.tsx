@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Institute, Course } from '../types';
-import { X, Bell, BellOff, Plus, Trash2, Settings, Euro, Clock, Edit2, AlertTriangle, Key, Eye, EyeOff, ExternalLink, Save, Download, Upload, Database, HardDriveDownload, HardDriveUpload, Check } from 'lucide-react';
+import { Institute } from '../types';
+import { X, Bell, BellOff, Plus, Trash2, Settings, Euro, Clock, Edit2, AlertTriangle, Key, Eye, EyeOff, ExternalLink, Save, Download, Upload, Database, HardDriveDownload, HardDriveUpload } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
