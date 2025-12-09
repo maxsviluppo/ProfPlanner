@@ -368,13 +368,32 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
                     </label>
                 </div>
 
-                <button 
-                  onClick={() => onDelete(course.id)}
-                  className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition"
-                  title="Elimina lezione"
-                >
-                    <Trash2 size={18} />
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            const newModality = course.modality === 'PRESENZA' ? 'DAD' : 'PRESENZA';
+                            onUpdate({ ...course, modality: newModality });
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition border ${
+                            course.modality === 'DAD' 
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20' 
+                            : 'bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20'
+                        }`}
+                        title={course.modality === 'DAD' ? "Passa a In Presenza" : "Passa a Online (DAD)"}
+                    >
+                        {course.modality === 'DAD' ? <MapPin size={14} /> : <Laptop size={14} />}
+                        {course.modality === 'DAD' ? 'Vai in Aula' : 'Vai in DAD'}
+                    </button>
+
+                    <button 
+                    onClick={() => onDelete(course.id)}
+                    className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition border border-red-500/20"
+                    title="Elimina lezione"
+                    >
+                        <Trash2 size={18} />
+                    </button>
+                </div>
             </div>
 
             {/* Argomenti Section - View/Edit Mode */}

@@ -270,21 +270,25 @@ const CourseForm: React.FC<CourseFormProps> = ({
                          />
                       </div>
 
-                      {/* Modality */}
+                      {/* Modality Toggle */}
                       <div className="space-y-1 col-span-2 md:col-span-1">
-                         <label className="text-[10px] text-slate-500 uppercase">Tipo</label>
-                         <select
-                           className={`w-full border-none rounded text-sm px-2 py-1.5 focus:outline-none appearance-none cursor-pointer font-medium text-white ${
-                             session.modality === 'DAD' 
-                             ? 'bg-blue-600' 
-                             : 'bg-emerald-600'
-                           }`}
-                           value={session.modality}
-                           onChange={e => updateSession(session.id, 'modality', e.target.value as Modality)}
-                         >
-                           <option value="PRESENZA" className="bg-slate-800 text-white">In Aula</option>
-                           <option value="DAD" className="bg-slate-800 text-white">Online</option>
-                         </select>
+                         <label className="text-[10px] text-slate-500 uppercase">Tipo Lezione</label>
+                         <div className="flex bg-slate-900 rounded-lg p-1 border border-white/10">
+                            <button
+                                type="button"
+                                onClick={() => updateSession(session.id, 'modality', 'PRESENZA')}
+                                className={`flex-1 py-1 text-xs font-bold rounded transition-all ${session.modality === 'PRESENZA' ? 'bg-emerald-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
+                            >
+                                AULA
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => updateSession(session.id, 'modality', 'DAD')}
+                                className={`flex-1 py-1 text-xs font-bold rounded transition-all ${session.modality === 'DAD' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
+                            >
+                                DAD
+                            </button>
+                        </div>
                       </div>
                     </div>
 
