@@ -47,6 +47,12 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, courses, ins
     return dates;
   };
 
+  // Helper to convert HH:MM to minutes for easier comparison
+  const getMinutes = (timeStr: string) => {
+     const [h, m] = timeStr.split(':').map(Number);
+     return h * 60 + m;
+  };
+
   // --- LOGIC: GENERATE REPORT ---
   const handleGenerate = () => {
     let startDate: Date;
@@ -112,6 +118,8 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, courses, ins
 
       const allDates = getDatesInRange(startDate, endDate);
       let foundFreeDays = 0;
+      
+      const SPLIT_TIME = 14 * 60; // 14:00 in minutes
 
       allDates.forEach(d => {
         const dayOfWeek = d.getDay();
@@ -128,14 +136,16 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, courses, ins
           result += `✅ ${dateFormatted}: TUTTO IL GIORNO LIBERO\n`;
           foundFreeDays++;
         } else {
-          // Check Morning / Afternoon (Threshold 14:00)
-          const isMorningBusy = dayCourses.some(c => parseInt(c.startTime.split(':')[0]) < 14);
-          const isAfternoonBusy = dayCourses.some(c => parseInt(c.startTime.split(':')[0]) >= 14);
-
-          // Logic:
-          // If morning is busy but afternoon is NOT -> Afternoon Free
-          // If afternoon is busy but morning is NOT -> Morning Free
+          // Check Morning / Afternoon
+          // Morning Busy: Any course starts BEFORE 14:00
+          const isMorningBusy = dayCourses.some(c => getMinutes(c.startTime) < SPLIT_TIME);
           
+          // Afternoon Busy: Any course starts AFTER 14:00 OR ends AFTER 14:00 (overlaps)
+          // This fixes the bug where a course 13:00-15:00 was considered only morning busy.
+          const isAfternoonBusy = dayCourses.some(c => 
+             getMinutes(c.startTime) >= SPLIT_TIME || getMinutes(c.endTime) > SPLIT_TIME
+          );
+
           if (!isMorningBusy && isAfternoonBusy) {
              result += `☀️ ${dateFormatted}: MATTINA LIBERA\n`;
              foundFreeDays++;

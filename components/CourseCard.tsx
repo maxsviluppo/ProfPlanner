@@ -50,8 +50,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
   const isMorning = startHour < 14;
   const timeOfDayLabel = isMorning ? 'MATTINA' : 'POMERIGGIO';
 
-  // LOWERED THRESHOLD: Was 80, now 60 for easier deletion
-  const swipeThreshold = 60;
+  // INCREASED THRESHOLD: Was 60, now 100 to make it harder to trigger accidentally
+  const swipeThreshold = 100;
 
   // Sync local state when course updates from outside (unless we are editing)
   useEffect(() => {
@@ -143,11 +143,11 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
     const diff = clientX - touchStart;
     
-    // Ignore small movements to prevent accidental swipes during scroll
-    if (Math.abs(diff) < 5) return;
+    // Ignore small movements (Deadzone increased to 10px) to prevent accidental swipes during scroll
+    if (Math.abs(diff) < 10) return;
 
     // Add resistance (damping) as you swipe further
-    const dampedDiff = diff / (1 + Math.abs(diff) / 600);
+    const dampedDiff = diff / (1 + Math.abs(diff) / 500);
     setTranslateX(dampedDiff);
   };
 
