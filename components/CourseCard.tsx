@@ -32,7 +32,9 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
   // Animation state
   const [isAnimating, setIsAnimating] = useState(false);
   
-  const [touchStart, setTouchStart] = useState<number | null>(null);
+  // Swipe Logic State
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
   const [translateX, setTranslateX] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
 
@@ -50,8 +52,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
   const isMorning = startHour < 14;
   const timeOfDayLabel = isMorning ? 'MATTINA' : 'POMERIGGIO';
 
-  // INCREASED THRESHOLD: Was 60, now 100 to make it harder to trigger accidentally
-  const swipeThreshold = 100;
+  // HIGH THRESHOLD: Require significant movement to trigger action
+  const swipeThreshold = 120;
 
   // Sync local state when course updates from outside (unless we are editing)
   useEffect(() => {
@@ -133,49 +135,69 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
     // Prevent swipe on inputs
     if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
     
-    setIsSwiping(true);
+    // Reset state but don't start swiping yet
+    setIsSwiping(false);
+    
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-    setTouchStart(clientX);
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    
+    setTouchStartX(clientX);
+    setTouchStartY(clientY);
   };
 
   const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
-    if (!isSwiping || touchStart === null) return;
-    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-    const diff = clientX - touchStart;
+    if (touchStartX === null || touchStartY === null) return;
     
-    // Ignore small movements (Deadzone increased to 10px) to prevent accidental swipes during scroll
-    if (Math.abs(diff) < 10) return;
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    
+    const diffX = clientX - touchStartX;
+    const diffY = clientY - touchStartY;
+    
+    // DECISION LOGIC: Is this a scroll or a swipe?
+    if (!isSwiping) {
+        // If vertical movement is greater than horizontal, assume user is scrolling list -> CANCEL SWIPE
+        if (Math.abs(diffY) > Math.abs(diffX)) {
+            setTouchStartX(null);
+            setTouchStartY(null);
+            return;
+        }
 
-    // Add resistance (damping) as you swipe further
-    const dampedDiff = diff / (1 + Math.abs(diff) / 500);
-    setTranslateX(dampedDiff);
+        // Only start swiping if horizontal movement is significant (> 30px deadzone)
+        if (Math.abs(diffX) > 30) {
+            setIsSwiping(true);
+        }
+    }
+
+    if (isSwiping) {
+        // Apply resistance (damping)
+        const dampedDiff = diffX / (1 + Math.abs(diffX) / 500);
+        setTranslateX(dampedDiff);
+    }
   };
 
   const handleTouchEnd = () => {
-    setIsSwiping(false);
-    if (touchStart === null) {
-      setTranslateX(0);
-      return;
-    }
+    if (touchStartX === null) return;
+
     const absX = Math.abs(translateX);
 
     if (absX > swipeThreshold) {
       if (translateX > 0) {
         // Edit Mode (Swipe Right)
-        setTranslateX(0); 
         onEdit(course);
       } else {
         // Delete Mode (Swipe Left)
-        setTranslateX(0); 
-        // Use requestAnimationFrame to ensure state update renders before alert blocks UI
         requestAnimationFrame(() => {
            setTimeout(() => onDelete(course.id), 50); 
         });
       }
-    } else {
-      setTranslateX(0);
     }
-    setTouchStart(null);
+    
+    // Reset everything
+    setTranslateX(0);
+    setIsSwiping(false);
+    setTouchStartX(null);
+    setTouchStartY(null);
   };
 
   const handleToggleComplete = (e: React.ChangeEvent<HTMLInputElement>) => {

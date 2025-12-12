@@ -52,6 +52,14 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, courses, ins
      const [h, m] = timeStr.split(':').map(Number);
      return h * 60 + m;
   };
+  
+  // Helper to get local date string YYYY-MM-DD
+  const toLocalISO = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
 
   // --- LOGIC: GENERATE REPORT ---
   const handleGenerate = () => {
@@ -71,10 +79,9 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, courses, ins
       endDate = new Date(customEndDate);
     }
 
-    // Adjust for timezone issues when comparing strings
-    // We normalize to YYYY-MM-DD string comparison which is safer for this app structure
-    const startStr = startDate.toISOString().split('T')[0];
-    const endStr = endDate.toISOString().split('T')[0];
+    // Convert start/end to string for comparison
+    const startStr = toLocalISO(startDate);
+    const endStr = toLocalISO(endDate);
 
     let result = "";
 
@@ -125,7 +132,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, courses, ins
         const dayOfWeek = d.getDay();
         if (dayOfWeek === 0 || dayOfWeek === 6) return; // Skip Sat (6) and Sun (0)
 
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = toLocalISO(d); // Correctly formatted local date string
         const dateFormatted = d.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: '2-digit' });
 
         // Find courses for this specific day
@@ -141,7 +148,6 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, courses, ins
           const isMorningBusy = dayCourses.some(c => getMinutes(c.startTime) < SPLIT_TIME);
           
           // Afternoon Busy: Any course starts AFTER 14:00 OR ends AFTER 14:00 (overlaps)
-          // This fixes the bug where a course 13:00-15:00 was considered only morning busy.
           const isAfternoonBusy = dayCourses.some(c => 
              getMinutes(c.startTime) >= SPLIT_TIME || getMinutes(c.endTime) > SPLIT_TIME
           );
