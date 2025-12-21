@@ -52,8 +52,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
   const isMorning = startHour < 14;
   const timeOfDayLabel = isMorning ? 'MATTINA' : 'POMERIGGIO';
 
-  // HIGH THRESHOLD: Require significant movement to trigger action
-  const swipeThreshold = 120;
+  // VERY HIGH THRESHOLD: Was 120, now 150 to make it very hard to trigger by mistake
+  const swipeThreshold = 150;
 
   // Sync local state when course updates from outside (unless we are editing)
   useEffect(() => {
@@ -135,7 +135,6 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
     // Prevent swipe on inputs
     if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
     
-    // Reset state but don't start swiping yet
     setIsSwiping(false);
     
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
@@ -156,22 +155,22 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
     
     // DECISION LOGIC: Is this a scroll or a swipe?
     if (!isSwiping) {
-        // If vertical movement is greater than horizontal, assume user is scrolling list -> CANCEL SWIPE
-        if (Math.abs(diffY) > Math.abs(diffX)) {
+        // Strict check: if vertical movement is significant, cancel swipe attempt to allow smooth list scrolling
+        if (Math.abs(diffY) > 20 || Math.abs(diffY) > Math.abs(diffX)) {
             setTouchStartX(null);
             setTouchStartY(null);
             return;
         }
 
-        // Only start swiping if horizontal movement is significant (> 30px deadzone)
-        if (Math.abs(diffX) > 30) {
+        // Only start swiping if horizontal movement is very intentional (> 50px deadzone)
+        if (Math.abs(diffX) > 50) {
             setIsSwiping(true);
         }
     }
 
     if (isSwiping) {
-        // Apply resistance (damping)
-        const dampedDiff = diffX / (1 + Math.abs(diffX) / 500);
+        // Apply heavy resistance (damping) for better feel
+        const dampedDiff = diffX / (1 + Math.abs(diffX) / 400);
         setTranslateX(dampedDiff);
     }
   };

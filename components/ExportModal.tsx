@@ -39,21 +39,25 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, courses, ins
   // --- LOGIC: DATE GENERATION ---
   const getDatesInRange = (startDate: Date, endDate: Date) => {
     const dates = [];
-    let currentDate = new Date(startDate);
-    while (currentDate <= endDate) {
-      dates.push(new Date(currentDate));
-      currentDate.setDate(currentDate.getDate() + 1);
+    // Normalize to local midnight to avoid timezone floating
+    let curr = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+    const last = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+    
+    while (curr <= last) {
+      dates.push(new Date(curr));
+      curr.setDate(curr.getDate() + 1);
     }
     return dates;
   };
 
   // Helper to convert HH:MM to minutes for easier comparison
   const getMinutes = (timeStr: string) => {
+     if (!timeStr) return 0;
      const [h, m] = timeStr.split(':').map(Number);
      return h * 60 + m;
   };
   
-  // Helper to get local date string YYYY-MM-DD
+  // Helper to get local date string YYYY-MM-DD from a Date object
   const toLocalISO = (date: Date) => {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -79,7 +83,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, courses, ins
       endDate = new Date(customEndDate);
     }
 
-    // Convert start/end to string for comparison
+    // Convert start/end to string for comparison using normalized function
     const startStr = toLocalISO(startDate);
     const endStr = toLocalISO(endDate);
 
@@ -108,7 +112,8 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, courses, ins
       result += `--------------------------\n\n`;
 
       filtered.forEach(c => {
-         const dateFormatted = new Date(c.date).toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: '2-digit' });
+         const d = new Date(c.date);
+         const dateFormatted = d.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: '2-digit' });
          const inst = institutes.find(i => i.id === c.instituteId)?.name || 'N/D';
          result += `🔹 ${dateFormatted} | ${c.startTime}-${c.endTime}\n`;
          result += `   ${c.name} (${inst})\n\n`;
@@ -132,10 +137,10 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, courses, ins
         const dayOfWeek = d.getDay();
         if (dayOfWeek === 0 || dayOfWeek === 6) return; // Skip Sat (6) and Sun (0)
 
-        const dateStr = toLocalISO(d); // Correctly formatted local date string
+        const dateStr = toLocalISO(d); // Matches exactly YYYY-MM-DD local
         const dateFormatted = d.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: '2-digit' });
 
-        // Find courses for this specific day
+        // Find courses for this specific day using exact string match
         const dayCourses = courses.filter(c => c.date === dateStr);
 
         if (dayCourses.length === 0) {

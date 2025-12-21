@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Institute } from '../types';
-import { X, Bell, BellOff, Plus, Trash2, Settings, Euro, Clock, Edit2, AlertTriangle, Key, Eye, EyeOff, ExternalLink, Save, Download, Upload, Database, HardDriveDownload, HardDriveUpload } from 'lucide-react';
+import { X, Bell, BellOff, Plus, Trash2, Settings, Euro, Clock, Edit2, AlertTriangle, Key, Eye, EyeOff, ExternalLink, Save, Download, Upload, Database, HardDriveDownload, HardDriveUpload, Mail } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -289,8 +289,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     </button>
                 </div>
 
-                <div className="text-center p-4">
-                  <p className="text-xs text-slate-500">Versione 1.1.0 • ProfPlanner</p>
+                {/* DEVELOPER CREDITS */}
+                <div className="mt-8 pt-6 border-t border-white/10 text-center space-y-4">
+                  <div className="flex flex-col items-center">
+                    <span className="text-[10px] font-black text-purple-500 tracking-[0.2em] uppercase mb-1">DevTools</span>
+                    <span className="text-lg font-black text-white tracking-tight">BY CASTRO MASSIMO</span>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed px-4">
+                    Questa App è realizzata da DevTools by Castro Massimo.<br/>
+                    Se hai bisogno di supporto, segnalazioni o di WebApp personalizzate contattaci.
+                  </p>
+                  <a 
+                    href="mailto:castromassimo@gmail.com"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm text-white font-bold transition shadow-xl"
+                  >
+                    <Mail size={18} className="text-purple-400" />
+                    Contattaci via Email
+                  </a>
+                  <p className="text-[10px] text-slate-500">Versione 1.1.0 • ProfPlanner</p>
                 </div>
              </div>
           )}
