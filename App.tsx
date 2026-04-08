@@ -260,12 +260,29 @@ const App: React.FC = () => {
     }
   };
 
-  const handleUpdateCourseStatus = async (updatedCourse: Course) => {
+  const handleUpdateCourse = async (updatedCourse: Course) => {
+    // If date or time changed, check for conflicts before saving
+    const originalCourse = courses.find(c => c.id === updatedCourse.id);
+    const dateOrTimeChanged = originalCourse && (
+        originalCourse.date !== updatedCourse.date || 
+        originalCourse.startTime !== updatedCourse.startTime || 
+        originalCourse.endTime !== updatedCourse.endTime
+    );
+
+    if (dateOrTimeChanged) {
+        const conflicts = checkConflicts([updatedCourse], courses, [updatedCourse.id]);
+        if (conflicts.length > 0) {
+            setConflictMessages(conflicts);
+            setIsConflictModalOpen(true);
+            return;
+        }
+    }
+
     setCourses(courses.map(c => c.id === updatedCourse.id ? updatedCourse : c));
     try {
         await db.courses.update(updatedCourse);
     } catch (error) {
-        console.error("Status update failed", error);
+        console.error("Update failed", error);
     }
   };
   
@@ -573,7 +590,7 @@ const App: React.FC = () => {
                         institute={institutes.find(i => i.id === course.instituteId)}
                         onEdit={(c) => { setEditingCourse(c); setIsFormOpen(true); }}
                         onDelete={handleDeleteCourse}
-                        onUpdate={handleUpdateCourseStatus}
+                        onUpdate={handleUpdateCourse}
                       />
                     ))
                  ) : (
@@ -607,7 +624,7 @@ const App: React.FC = () => {
                           institute={institutes.find(i => i.id === course.instituteId)}
                           onEdit={(c) => { setEditingCourse(c); setIsFormOpen(true); }}
                           onDelete={handleDeleteCourse}
-                          onUpdate={handleUpdateCourseStatus}
+                          onUpdate={handleUpdateCourse}
                        />
                      </React.Fragment>
                    );
@@ -631,6 +648,7 @@ const App: React.FC = () => {
         institutes={institutes}
         onAddInstitute={handleAddInstitute}
         preselectedDate={viewMode === 'calendar' ? selectedDate : undefined}
+        existingCourses={courses}
       />
 
       <ImportModal 

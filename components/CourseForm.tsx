@@ -9,7 +9,8 @@ interface CourseFormProps {
   initialData?: Course | null;
   institutes: Institute[];
   onAddInstitute: (name: string) => Institute;
-  preselectedDate?: string; // New prop
+  preselectedDate?: string; 
+  existingCourses?: Course[]; // New prop
 }
 
 interface SessionRow {
@@ -21,7 +22,7 @@ interface SessionRow {
 }
 
 const CourseForm: React.FC<CourseFormProps> = ({ 
-  isOpen, onClose, onSubmit, initialData, institutes, onAddInstitute, preselectedDate 
+  isOpen, onClose, onSubmit, initialData, institutes, onAddInstitute, preselectedDate, existingCourses = [] 
 }) => {
   // Global Course Data
   const [courseName, setCourseName] = useState('');
@@ -32,6 +33,9 @@ const CourseForm: React.FC<CourseFormProps> = ({
 
   // Sessions Data
   const [sessions, setSessions] = useState<SessionRow[]>([]);
+
+  // Get unique course names for autocomplete
+  const uniqueCourseNames = Array.from(new Set(existingCourses.map(c => c.name))).sort();
 
   // Initialize form
   useEffect(() => {
@@ -152,12 +156,18 @@ const CourseForm: React.FC<CourseFormProps> = ({
                   <input
                     type="text"
                     required
+                    list="course-suggestions"
                     className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-purple-500/50 outline-none transition-all"
                     value={courseName}
                     onChange={e => setCourseName(e.target.value)}
                     placeholder="Es. Digital Marketing"
                     autoFocus
                   />
+                  <datalist id="course-suggestions">
+                    {uniqueCourseNames.map(name => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs text-slate-400">Codice (Opzionale)</label>

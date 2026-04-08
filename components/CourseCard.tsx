@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Course, Institute } from '../types';
-import { MapPin, Laptop, Edit2, Trash2, Building2, CheckCircle2, ChevronDown, ChevronUp, StickyNote, ExternalLink, Save, Sun, Moon, Mic, MicOff, BadgeEuro } from 'lucide-react';
+import { MapPin, Laptop, Edit2, Trash2, Building2, CheckCircle2, ChevronDown, ChevronUp, StickyNote, ExternalLink, Save, Sun, Moon, Mic, MicOff, BadgeEuro, CalendarDays } from 'lucide-react';
 
 interface CourseCardProps {
   course: Course;
@@ -372,7 +372,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
           <div className="border-t border-white/5 bg-black/20 p-4 animate-in slide-in-from-top-2 space-y-4">
             
             {/* Action Row */}
-            <div className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5">
+            <div className="flex flex-wrap gap-3 justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5">
                 <div className="flex items-center gap-3">
                     <div className="relative flex items-center justify-center">
                         <input 
@@ -389,7 +389,23 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, institute, onEdit, onDe
                     </label>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                    {/* Date Change Option */}
+                    <div className="flex items-center gap-2 bg-slate-900/50 px-3 py-1.5 rounded-lg border border-white/10 hover:border-indigo-500/50 transition-colors">
+                        <CalendarDays size={14} className="text-indigo-400" />
+                        <span className="text-[10px] font-bold text-slate-500 uppercase">Sposta:</span>
+                        <input 
+                            type="date"
+                            value={course.date}
+                            onChange={(e) => {
+                                e.stopPropagation();
+                                onUpdate({ ...course, date: e.target.value });
+                            }}
+                            className="bg-transparent text-xs font-bold text-slate-200 focus:outline-none [color-scheme:dark]"
+                            onMouseDown={(e) => e.stopPropagation()}
+                        />
+                    </div>
+
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
