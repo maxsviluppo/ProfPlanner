@@ -8,11 +8,14 @@ const generateId = (): string => {
 
 export const parseScheduleData = async (rawData: string): Promise<Course[]> => {
   // Check LocalStorage first, then Env
-  const apiKey = localStorage.getItem('profplanner_api_key') || process.env.API_KEY;
+  let apiKey = localStorage.getItem('profplanner_api_key') || process.env.API_KEY;
 
   if (!apiKey) {
     throw new Error("API Key mancante. Vai nelle Impostazioni e inserisci la tua Google Gemini API Key.");
   }
+
+  // Normalizzazione: rimuove spazi bianchi e a capo da qualsiasi formato (legacy AIzaSy... o nuovo AQ....)
+  apiKey = apiKey.trim().replace(/\s+/g, "");
 
   const ai = new GoogleGenAI({ apiKey: apiKey });
 

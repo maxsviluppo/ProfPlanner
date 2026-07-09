@@ -68,7 +68,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   if (!isOpen) return null;
 
   const handleSaveApiKey = () => {
-    localStorage.setItem('profplanner_api_key', apiKey.trim());
+    const cleanKey = apiKey.trim().replace(/\s+/g, "");
+    setApiKey(cleanKey);
+    localStorage.setItem('profplanner_api_key', cleanKey);
     alert("API Key salvata con successo!");
   };
 
@@ -292,11 +294,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 {/* DEVELOPER CREDITS */}
                 <div className="mt-8 pt-6 border-t border-white/10 text-center space-y-4">
                   <div className="flex flex-col items-center">
-                    <span className="text-[10px] font-black text-purple-500 tracking-[0.2em] uppercase mb-1">DevTools</span>
+                    <a 
+                      href="https://www.codecafe.it" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-[10px] font-black text-purple-500 tracking-[0.2em] uppercase mb-1 hover:text-purple-400 transition"
+                    >
+                      CODECAFE
+                    </a>
                     <span className="text-lg font-black text-white tracking-tight">BY CASTRO MASSIMO</span>
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed px-4">
-                    Questa App è realizzata da DevTools by Castro Massimo.<br/>
+                    Questa App è realizzata da <a href="https://www.codecafe.it" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">CODECAFE</a> by Castro Massimo.<br/>
                     Se hai bisogno di supporto, segnalazioni o di WebApp personalizzate contattaci.
                   </p>
                   <a 
