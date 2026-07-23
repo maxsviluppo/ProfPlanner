@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Course, Modality } from "../types";
 import { describeApiKeyFormat, getStoredApiKey, isLikelyGeminiApiKey, normalizeApiKey } from "./apiKeyUtils";
+import { GEMINI_API_KEY_REFERRERS } from "./apiKeyReferrers";
 
 const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest"] as const;
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
@@ -133,7 +134,8 @@ export const formatGeminiApiError = (error: unknown): string => {
       "1) hai copiato l'intera chiave (nuovo formato AQ... o legacy AIza...)",
       "2) hai cliccato Salva nelle Impostazioni",
       "3) la key in AI Studio è attiva e non bloccata",
-      "4) se hai restrizioni referrer, aggiungi http://localhost:5173/* e http://127.0.0.1:5173/*",
+      "4) se hai restrizioni referrer, aggiungi:",
+      ...GEMINI_API_KEY_REFERRERS.map((r) => `   - ${r}`),
     ].join(" ");
   }
 

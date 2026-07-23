@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Institute } from '../types';
 import { normalizeApiKey, describeApiKeyFormat } from '../services/apiKeyUtils';
+import { GEMINI_API_KEY_REFERRERS } from '../services/apiKeyReferrers';
 import { testGeminiApiKey } from '../services/geminiService';
 import { X, Bell, BellOff, Plus, Trash2, Settings, Euro, Clock, Edit2, AlertTriangle, Key, Eye, EyeOff, ExternalLink, Save, Download, Upload, Database, HardDriveDownload, HardDriveUpload, Mail, Loader2, CheckCircle2 } from 'lucide-react';
 
@@ -312,8 +313,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                        </div>
                      )}
 
+                     <div className="bg-slate-900/60 border border-white/10 rounded-lg p-3 space-y-2">
+                       <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Domini da autorizzare in Google AI Studio</p>
+                       <ul className="space-y-1">
+                         {GEMINI_API_KEY_REFERRERS.map((referrer) => (
+                           <li key={referrer} className="text-[11px] font-mono text-emerald-300/90 break-all">{referrer}</li>
+                         ))}
+                       </ul>
+                       <p className="text-[10px] text-slate-500 leading-relaxed">
+                         In AI Studio → API Keys → restrizioni referrer → aggiungi almeno <span className="text-white">https://prof-planner.vercel.app/*</span> per la versione online.
+                       </p>
+                     </div>
+
                      <p className="text-[10px] text-slate-500 leading-relaxed px-1">
-                       Se compare "non autorizzata", controlla in Google AI Studio che la key non sia bloccata e, se hai restrizioni referrer, aggiungi <span className="font-mono">http://localhost:5173/*</span>.
+                       Se compare "non autorizzata", controlla che la key non sia bloccata e che i domini sopra siano autorizzati.
                      </p>
                      
                      <div className="flex justify-between items-center px-1">
