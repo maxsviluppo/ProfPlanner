@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Institute } from '../types';
-import { X, Bell, BellOff, Plus, Trash2, Settings, Euro, Clock, Edit2, AlertTriangle, Key, Eye, EyeOff, ExternalLink, Save, Download, Upload, Database, HardDriveDownload, HardDriveUpload, Mail } from 'lucide-react';
+import { normalizeApiKey, describeApiKeyFormat } from '../services/apiKeyUtils';
+import { testGeminiApiKey } from '../services/geminiService';
+import { X, Bell, BellOff, Plus, Trash2, Settings, Euro, Clock, Edit2, AlertTriangle, Key, Eye, EyeOff, ExternalLink, Save, Download, Upload, Database, HardDriveDownload, HardDriveUpload, Mail, Loader2, CheckCircle2 } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -54,6 +56,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   // API Key State
   const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
+  const [isTestingKey, setIsTestingKey] = useState(false);
+  const [keyTestMessage, setKeyTestMessage] = useState<string | null>(null);
+  const [keyTestOk, setKeyTestOk] = useState(false);
 
   // Restore State
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,16 +67,46 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     if (isOpen) {
         const storedKey = localStorage.getItem('profplanner_api_key');
         if (storedKey) setApiKey(storedKey);
+        setKeyTestMessage(null);
+        setKeyTestOk(false);
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleSaveApiKey = () => {
-    const cleanKey = apiKey.trim().replace(/\s+/g, "");
+    const cleanKey = normalizeApiKey(apiKey);
+    if (!cleanKey) return;
+
     setApiKey(cleanKey);
     localStorage.setItem('profplanner_api_key', cleanKey);
-    alert("API Key salvata con successo!");
+    setKeyTestMessage(null);
+    setKeyTestOk(false);
+    alert(`API Key salvata (${describeApiKeyFormat(cleanKey)}).`);
+  };
+
+  const handleTestApiKey = async () => {
+    const cleanKey = normalizeApiKey(apiKey);
+    if (!cleanKey) {
+      setKeyTestMessage("Inserisci prima una API Key.");
+      setKeyTestOk(false);
+      return;
+    }
+
+    setIsTestingKey(true);
+    setKeyTestMessage(null);
+    setKeyTestOk(false);
+
+    try {
+      const result = await testGeminiApiKey(cleanKey);
+      setKeyTestMessage(result);
+      setKeyTestOk(true);
+    } catch (error: any) {
+      setKeyTestMessage(error.message || "Test fallito.");
+      setKeyTestOk(false);
+    } finally {
+      setIsTestingKey(false);
+    }
   };
 
   const handleSaveInstitute = () => {
@@ -226,7 +261,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       </div>
                       <div>
                          <h3 className="font-bold text-white text-sm">Gemini API Key</h3>
-                         <p className="text-xs text-slate-400">Necessaria per l'importazione AI.</p>
+                         <p className="text-xs text-slate-400">Supporta il nuovo formato AQ... e il legacy AIza...</p>
                       </div>
                    </div>
                    
@@ -236,9 +271,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                          <input 
                            type={showKey ? "text" : "password"}
                            className="w-full bg-slate-900 border border-white/10 rounded-lg pl-3 pr-10 py-2 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none font-mono"
-                           placeholder="Inserisci la tua API Key qui..."
+                           placeholder="AQ... oppure AIza..."
                            value={apiKey}
-                           onChange={(e) => setApiKey(e.target.value)}
+                           onChange={(e) => {
+                             setApiKey(e.target.value);
+                             setKeyTestMessage(null);
+                             setKeyTestOk(false);
+                           }}
                          />
                          <button 
                            onClick={() => setShowKey(!showKey)}
@@ -255,6 +294,27 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                          <Save size={18} />
                        </button>
                      </div>
+                     
+                     <div className="flex flex-wrap gap-2">
+                       <button
+                         onClick={handleTestApiKey}
+                         disabled={isTestingKey || !apiKey.trim()}
+                         className="px-3 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white rounded-lg text-sm flex items-center gap-2"
+                       >
+                         {isTestingKey ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                         Testa connessione
+                       </button>
+                     </div>
+
+                     {keyTestMessage && (
+                       <div className={`text-xs px-3 py-2 rounded-lg border ${keyTestOk ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200' : 'bg-red-500/10 border-red-500/20 text-red-200'}`}>
+                         {keyTestMessage}
+                       </div>
+                     )}
+
+                     <p className="text-[10px] text-slate-500 leading-relaxed px-1">
+                       Se compare "non autorizzata", controlla in Google AI Studio che la key non sia bloccata e, se hai restrizioni referrer, aggiungi <span className="font-mono">http://localhost:5173/*</span>.
+                     </p>
                      
                      <div className="flex justify-between items-center px-1">
                         <a 

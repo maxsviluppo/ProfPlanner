@@ -1,23 +1,24 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Course, Modality } from "../types";
+import { describeApiKeyFormat, getStoredApiKey, isLikelyGeminiApiKey, normalizeApiKey } from "./apiKeyUtils";
 
 const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest"] as const;
+const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
 const generateId = (): string => {
   return Date.now().toString(36) + Math.random().toString(36).substring(2);
 };
 
-const getApiKey = (): string => {
-  const fromStorage = localStorage.getItem("profplanner_api_key");
-  const fromEnv =
-    process.env.API_KEY ||
-    process.env.GEMINI_API_KEY ||
-    process.env.VITE_GEMINI_API_KEY;
-
-  const apiKey = (fromStorage || fromEnv || "").trim().replace(/\s+/g, "");
+const requireApiKey = (override?: string): string => {
+  const apiKey = normalizeApiKey(override || getStoredApiKey());
   if (!apiKey) {
     throw new Error(
-      "API Key mancante. Vai in Impostazioni e inserisci la tua Google Gemini API Key, oppure crea un file .env.local con GEMINI_API_KEY=..."
+      "API Key mancante. Vai in Impostazioni, incolla la chiave Gemini (formato AQ... o AIza...) e clicca Salva."
+    );
+  }
+  if (!isLikelyGeminiApiKey(apiKey)) {
+    throw new Error(
+      "La chiave sembra incompleta o non valida. Copia l'intera key da Google AI Studio (inizia con AQ... o AIza...) e salvala di nuovo."
     );
   }
   return apiKey;
@@ -93,42 +94,63 @@ const toCourses = (items: unknown[]): Course[] =>
     };
   });
 
-const formatApiError = (error: unknown): string => {
+const extractApiErrorDetails = (error: unknown): { status?: number; message: string; reason?: string } => {
   if (!(error instanceof Error)) {
-    return "Impossibile interpretare i dati.";
+    return { message: "Impossibile interpretare i dati." };
   }
 
   const status = (error as Error & { status?: number }).status;
-  let apiMessage = error.message;
+  let message = error.message;
+  let reason: string | undefined;
 
   try {
     const parsed = JSON.parse(error.message);
-    apiMessage =
-      parsed?.error?.message ||
-      parsed?.error?.status ||
-      error.message;
+    message = parsed?.error?.message || message;
+    reason = parsed?.error?.status || parsed?.error?.details?.[0]?.reason;
   } catch {
     // keep original message
   }
 
-  if (status === 400) {
-    return `Richiesta non valida verso Gemini (${apiMessage}). Riprova con un testo più breve o più chiaro.`;
+  return { status, message, reason };
+};
+
+export const formatGeminiApiError = (error: unknown): string => {
+  const { status, message, reason } = extractApiErrorDetails(error);
+  const combined = `${message} ${reason || ""}`.toLowerCase();
+
+  if (
+    status === 401 ||
+    status === 403 ||
+    combined.includes("api key") ||
+    combined.includes("api_key") ||
+    combined.includes("invalid") ||
+    combined.includes("unauthorized") ||
+    combined.includes("permission_denied")
+  ) {
+    return [
+      "API Key non valida o non autorizzata.",
+      "Verifica che:",
+      "1) hai copiato l'intera chiave (nuovo formato AQ... o legacy AIza...)",
+      "2) hai cliccato Salva nelle Impostazioni",
+      "3) la key in AI Studio è attiva e non bloccata",
+      "4) se hai restrizioni referrer, aggiungi http://localhost:5173/* e http://127.0.0.1:5173/*",
+    ].join(" ");
   }
-  if (status === 401 || status === 403) {
-    return "API Key non valida o non autorizzata. Controlla la chiave in Impostazioni (deve provenire da Google AI Studio).";
+
+  if (status === 400) {
+    return `Richiesta non valida verso Gemini (${message}). Riprova con un testo più breve o più chiaro.`;
   }
   if (status === 429) {
     return "Limite di richieste Gemini superato. Attendi qualche minuto e riprova.";
   }
   if (status === 500 || status === 503) {
-    return "Errore temporaneo del servizio Gemini. Riprova tra poco. Se persiste, verifica la API Key e il modello.";
-  }
-  if (error.message.includes("API Key")) {
-    return "Errore API Key: verifica la chiave nelle impostazioni.";
+    return "Errore temporaneo del servizio Gemini. Riprova tra poco.";
   }
 
-  return apiMessage || "Impossibile interpretare i dati.";
+  return message || "Impossibile interpretare i dati.";
 };
+
+const createClient = (apiKey: string) => new GoogleGenAI({ apiKey });
 
 const requestStructured = async (ai: GoogleGenAI, rawData: string, model: string) => {
   return ai.models.generateContent({
@@ -153,26 +175,114 @@ const requestPlainJson = async (ai: GoogleGenAI, rawData: string, model: string)
   });
 };
 
+/** Chiamata REST nativa Gemini: compatibile con le nuove auth key AQ... */
+const requestViaRest = async (apiKey: string, rawData: string, model: string): Promise<string> => {
+  const response = await fetch(`${GEMINI_API_BASE}/models/${model}:generateContent`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+      contents: [{
+        role: "user",
+        parts: [{ text: `Analizza questi dati e rispondi SOLO con JSON nel formato {"courses":[...]}:\n\n${rawData}` }],
+      }],
+      generationConfig: {
+        responseMimeType: "application/json",
+      },
+    }),
+  });
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const err = new Error(JSON.stringify(payload)) as Error & { status?: number };
+    err.status = response.status;
+    throw err;
+  }
+
+  const text = payload?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error("Risposta Gemini vuota o non valida.");
+  }
+
+  return text;
+};
+
+const generateWithModel = async (apiKey: string, rawData: string, model: string): Promise<string> => {
+  const ai = createClient(apiKey);
+
+  try {
+    try {
+      const response = await requestStructured(ai, rawData, model);
+      return response.text || '{"courses":[]}';
+    } catch (structuredError) {
+      const status = (structuredError as Error & { status?: number }).status;
+      if (status === 400 || status === 500 || status === 503) {
+        const response = await requestPlainJson(ai, rawData, model);
+        return response.text || '{"courses":[]}';
+      }
+      throw structuredError;
+    }
+  } catch (sdkError) {
+    const status = (sdkError as Error & { status?: number }).status;
+    if (status === 401 || status === 403 || status === 400 || status === 500 || status === 503) {
+      return requestViaRest(apiKey, rawData, model);
+    }
+    throw sdkError;
+  }
+};
+
+export const testGeminiApiKey = async (apiKeyOverride?: string): Promise<string> => {
+  const apiKey = requireApiKey(apiKeyOverride);
+  const model = MODELS[0];
+
+  try {
+    const ai = createClient(apiKey);
+    await ai.models.generateContent({
+      model,
+      contents: 'Rispondi solo con la parola "OK".',
+    });
+    return `Connessione riuscita (${describeApiKeyFormat(apiKey)}).`;
+  } catch (sdkError) {
+    try {
+      const response = await fetch(`${GEMINI_API_BASE}/models/${model}:generateContent`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: 'Rispondi solo con "OK".' }] }],
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const err = new Error(JSON.stringify(payload)) as Error & { status?: number };
+        err.status = response.status;
+        throw err;
+      }
+
+      return `Connessione riuscita via REST (${describeApiKeyFormat(apiKey)}).`;
+    } catch (restError) {
+      console.error("Test API key fallito (SDK):", sdkError);
+      console.error("Test API key fallito (REST):", restError);
+      throw new Error(formatGeminiApiError(restError));
+    }
+  }
+};
+
 export const parseScheduleData = async (rawData: string): Promise<Course[]> => {
-  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+  const apiKey = requireApiKey();
   let lastError: unknown;
 
   for (const model of MODELS) {
     try {
-      let response;
-      try {
-        response = await requestStructured(ai, rawData, model);
-      } catch (structuredError) {
-        const status = (structuredError as Error & { status?: number }).status;
-        if (status === 400 || status === 500 || status === 503) {
-          response = await requestPlainJson(ai, rawData, model);
-        } else {
-          throw structuredError;
-        }
-      }
-
-      const courses = toCourses(parseAiJson(response.text || '{"courses":[]}'));
-      return courses;
+      const responseText = await generateWithModel(apiKey, rawData, model);
+      return toCourses(parseAiJson(responseText));
     } catch (error) {
       lastError = error;
       console.error(`Errore parsing AI con modello ${model}:`, error);
@@ -183,5 +293,5 @@ export const parseScheduleData = async (rawData: string): Promise<Course[]> => {
     throw new Error("L'AI ha generato un formato dati non valido. Riprova.");
   }
 
-  throw new Error(formatApiError(lastError));
+  throw new Error(formatGeminiApiError(lastError));
 };
